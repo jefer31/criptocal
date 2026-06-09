@@ -24,15 +24,11 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('calculadora');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
-  const [showCookieBanner, setShowCookieBanner] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentTime, setCurrentTime] = useState('Cargando fecha...');
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const cookiesAccepted = localStorage.getItem('cookiesAccepted');
-      if (!cookiesAccepted) {
-        setShowCookieBanner(true);
-      }
       // Restore remember-me email
       const savedEmail = localStorage.getItem('rememberedEmail');
       if (savedEmail) {
@@ -83,11 +79,6 @@ export default function Home() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAcceptCookies = () => {
-    localStorage.setItem('cookiesAccepted', 'true');
-    setShowCookieBanner(false);
-  };
-
   const handleAuth = async () => {
     if (authLoading) return;
     setAuthError('');
@@ -105,6 +96,7 @@ export default function Home() {
           } else {
             localStorage.removeItem('rememberedEmail');
           }
+          setShowAuthModal(false);
         }
       } else {
         if (!username || !phone) {
@@ -193,8 +185,9 @@ export default function Home() {
 
 <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} id="sidebarOverlay" onClick={() => setIsSidebarOpen(false)}></div>
 
-{!user && (<div className="welcome-screen" id="welcomeScreen">
+{showAuthModal && (<div className="welcome-screen" id="welcomeScreen" style={{position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 10000, background: 'rgba(0,0,0,0.85)'}}>
     <div className="portada-card" onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') handleAuth(); }}>
+        <button onClick={() => setShowAuthModal(false)} style={{position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer', zIndex: 10}}>✕</button>
         <div className="logo-area">
             <div className="login-logo-wrapper">
               <Image src="/logo.png" alt="CriptoCal Logo" width={64} height={64} className="login-logo-img" priority />
@@ -325,7 +318,7 @@ export default function Home() {
     </div>
 </div>)}
 
-<div className="mainAppWrapper" id="mainAppWrapper" style={{ display: user ? 'block' : 'none' }}>
+<div className="mainAppWrapper" id="mainAppWrapper" style={{ display: 'block' }}>
     <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`} id="appSidebar">
         <div className="sidebar-header">
             <div className="sidebar-brand">
@@ -338,23 +331,35 @@ export default function Home() {
         <div className="user-profile-section" id="sidebarUserProfile">
             <img className="sidebar-avatar" id="sidebarAvatar" src={user?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=150&auto=format&fit=crop"} alt="User Profile" />
             <div className="user-info-meta">
-                <span className="user-meta-name" id="sidebarTxtName">{user?.user_metadata?.username || 'Usuario'}</span>
-                <span className="user-meta-role" id="sidebarTxtRole">{user?.email || 'Local Standard'}</span>
+                <span className="user-meta-name" id="sidebarTxtName">{user?.user_metadata?.username || 'Modo Invitado'}</span>
+                <span className="user-meta-role" id="sidebarTxtRole">{user?.email || 'Sin cuenta'}</span>
             </div>
         </div>
 
         <div className="sidebar-menu">
             <div className={`menu-item ${activeTab === 'calculadora' ? 'active' : ''}`} id="menu-calculadora" onClick={() => { setActiveTab('calculadora'); setIsSidebarOpen(false); }}>📊 Calculadora Pro</div>
-            <div className={`menu-item ${activeTab === 'historial' ? 'active' : ''}`} id="menu-historial" onClick={() => { setActiveTab('historial'); setIsSidebarOpen(false); }}>⏳ Historial Local</div>
+            <div className={`menu-item ${activeTab === 'historial' ? 'active' : ''}`} id="menu-historial" onClick={() => { 
+              if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
+              setActiveTab('historial'); setIsSidebarOpen(false); 
+            }}>⏳ Historial Local</div>
             <div className={`menu-item ${activeTab === 'matematica' ? 'active' : ''}`} id="menu-matematica" onClick={() => { setActiveTab('matematica'); setIsSidebarOpen(false); }}>🧮 Calculadora Común</div>
-            <div className={`menu-item ${activeTab === 'perfil' ? 'active' : ''}`} id="menu-perfil" onClick={() => { setActiveTab('perfil'); setIsSidebarOpen(false); }}>⚙️ Mi Cuenta</div>
+            <div className={`menu-item ${activeTab === 'perfil' ? 'active' : ''}`} id="menu-perfil" onClick={() => { 
+              if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
+              setActiveTab('perfil'); setIsSidebarOpen(false); 
+            }}>⚙️ Mi Cuenta</div>
             <div className="menu-item" onClick={() => { setShowTerms(true); setIsSidebarOpen(false); }}>⚖️ Términos Legales</div>
         </div>
 
         <div className="sidebar-footer">
-            <button className="btn-logout" type="button" onClick={handleLogout}>
-                🚪 Cerrar Sesión
-            </button>
+            {user ? (
+              <button className="btn-logout" type="button" onClick={handleLogout}>
+                  🚪 Cerrar Sesión
+              </button>
+            ) : (
+              <button className="btn-logout" type="button" onClick={() => { setShowAuthModal(true); setIsSidebarOpen(false); }} style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}>
+                  👤 Iniciar Sesión / Registro
+              </button>
+            )}
         </div>
     </div>
 
@@ -391,24 +396,6 @@ export default function Home() {
 </div>
 
 
-{showCookieBanner && (
-    <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, 
-        backgroundColor: 'var(--bg-dark, #111)', borderTop: '1px solid var(--primary, #00ADB5)',
-        padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        zIndex: 10000, color: 'white', fontSize: '14px', flexWrap: 'wrap', gap: '15px'
-    }}>
-        <div style={{ flex: 1, minWidth: '250px' }}>
-            🍪 <strong>Usamos cookies esenciales:</strong> Utilizamos cookies estrictamente necesarias para mantener tu sesión activa en la nube y guardar tus preferencias. No usamos cookies de rastreo o publicidad. <span style={{ textDecoration: 'underline', cursor: 'pointer', color: 'var(--primary, #00ADB5)' }} onClick={() => setShowTerms(true)}>Leer más en Políticas</span>.
-        </div>
-        <button onClick={handleAcceptCookies} style={{
-            backgroundColor: 'var(--primary, #00ADB5)', color: '#fff', border: 'none', padding: '10px 20px', 
-            borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
-        }}>
-            Aceptar y Continuar
-        </button>
-    </div>
-)}
 
 {/* Botón flotante de Telegram */}
 <a 
@@ -418,7 +405,7 @@ export default function Home() {
   className="telegram-float-btn"
   style={{
     position: 'fixed',
-    bottom: showCookieBanner ? '90px' : '30px',
+    bottom: '30px',
     right: '30px',
     backgroundColor: '#0088cc',
     color: '#fff',
