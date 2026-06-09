@@ -1,108 +1,104 @@
 import { NextResponse } from 'next/server';
-import ccxt from 'ccxt';
 
-// Cache de instancias de exchanges para no recrearlas en cada petición
-// Así los mercados solo se cargan una vez y las consultas siguientes son instantáneas
-const exchangeCache: Record<string, any> = {};
-
-// Cache de precios para evitar llamadas masivas a los exchanges (TTL)
+const CACHE_TTL_MS = 5000;
 const priceCache: Record<string, { price: number; timestamp: number }> = {};
-const CACHE_TTL_MS = 10000; // 10 segundos de vida útil para cada precio
 
-function getExchange(exchangeId: string) {
-  if (!exchangeCache[exchangeId]) {
-    // @ts-ignore
-    const ExchangeClass = ccxt[exchangeId];
-    exchangeCache[exchangeId] = new ExchangeClass({
-      enableRateLimit: true,
-      timeout: 20000, // 20 segundos para la primera carga de mercados
-    });
+// Funciones nativas ultra-rápidas (evitan el límite de 10s de Vercel y la pesada librería CCXT)
+const fetchers: Record<string, (symbol: string, isBuy: boolean) => Promise<number>> = {
+  binance: async (sym, isBuy) => {
+    const res = await fetch(`https://api.binance.com/api/v3/ticker/bookTicker?symbol=${sym}`);
+    const data = await res.json();
+    return parseFloat(isBuy ? data.askPrice : data.bidPrice);
+  },
+  bybit: async (sym, isBuy) => {
+    const res = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${sym}`);
+    const data = await res.json();
+    return parseFloat(isBuy ? data.result.list[0].ask1Price : data.result.list[0].bid1Price);
+  },
+  mexc: async (sym, isBuy) => {
+    const res = await fetch(`https://api.mexc.com/api/v3/ticker/bookTicker?symbol=${sym}`);
+    const data = await res.json();
+    return parseFloat(isBuy ? data.askPrice : data.bidPrice);
+  },
+  kucoin: async (sym, isBuy) => {
+    const kSym = sym.replace('USDT', '-USDT').replace('BTC', '-BTC');
+    const res = await fetch(`https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kSym}`);
+    const data = await res.json();
+    return parseFloat(isBuy ? data.data.bestAsk : data.data.bestBid);
+  },
+  okx: async (sym, isBuy) => {
+    const oSym = sym.replace('USDT', '-USDT').replace('BTC', '-BTC');
+    const res = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${oSym}`);
+    const data = await res.json();
+    return parseFloat(isBuy ? data.data[0].askPx : data.data[0].bidPx);
+  },
+  bitget: async (sym, isBuy) => {
+    const res = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${sym}`);
+    const data = await res.json();
+    return parseFloat(isBuy ? data.data[0].askPr : data.data[0].bidPr);
+  },
+  gateio: async (sym, isBuy) => {
+    const gSym = sym.replace('USDT', '_USDT').replace('BTC', '_BTC');
+    const res = await fetch(`https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${gSym}`);
+    const data = await res.json();
+    return parseFloat(isBuy ? data[0].lowest_ask : data[0].highest_bid);
+  },
+  kraken: async (sym, isBuy) => {
+    let kSym = sym;
+    if (sym === 'BTCUSDT') kSym = 'XBTUSDT';
+    if (sym === 'BTCVES') throw new Error("Kraken no soporta VES");
+    const res = await fetch(`https://api.kraken.com/0/public/Ticker?pair=${kSym}`);
+    const data = await res.json();
+    const pairKey = Object.keys(data.result)[0];
+    return parseFloat(isBuy ? data.result[pairKey].a[0] : data.result[pairKey].b[0]);
   }
-  return exchangeCache[exchangeId];
-}
-
-// Normalizar el símbolo para CCXT (ej: BTCUSDT -> BTC/USDT)
-function formatSymbol(sym: string): string {
-  if (sym === 'EURUSDT') return 'EUR/USDT';
-  if (sym.startsWith('USDT') && sym.length > 4) return 'USDT/' + sym.replace('USDT', '');
-  if (sym.endsWith('USDT')) return sym.replace('USDT', '/USDT');
-  return sym;
-}
-
-// Función con reintentos automáticos
-async function fetchWithRetry(exchange: any, symbol: string, maxRetries = 3): Promise<any> {
-  let lastError: any;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const ticker = await exchange.fetchTicker(symbol);
-      return ticker;
-    } catch (error: any) {
-      lastError = error;
-      console.warn(`Intento ${attempt}/${maxRetries} falló para ${exchange.id} ${symbol}: ${error.message}`);
-      if (attempt < maxRetries) {
-        // Espera progresiva: 1s, 2s, 3s...
-        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-      }
-    }
-  }
-  throw lastError;
-}
+};
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const exchangeId = searchParams.get('exchange')?.toLowerCase();
-  const rawSymbol = searchParams.get('symbol')?.toUpperCase();
-  const type = searchParams.get('type')?.toLowerCase();
+  let rawSymbol = searchParams.get('symbol')?.toUpperCase();
+  const type = searchParams.get('type')?.toLowerCase(); // 'compra' o 'venta'
 
   if (!exchangeId || !rawSymbol || !type) {
     return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 });
   }
 
+  // Normalizar símbolo EUR
+  if (rawSymbol === 'EURUSDT' && (exchangeId === 'binance' || exchangeId === 'kraken')) {
+    rawSymbol = 'EURUSDT';
+  } else if (rawSymbol === 'EURUSDT') {
+    rawSymbol = 'EURUSDT'; // Dependiendo del exchange puede fallar, pero mantenemos formato base
+  }
+
   try {
-    if (!ccxt.exchanges.includes(exchangeId)) {
-      return NextResponse.json({ error: 'Exchange no soportado' }, { status: 400 });
-    }
-
-    const symbol = formatSymbol(rawSymbol);
-    const cacheKey = `${exchangeId}-${symbol}-${type}`;
-
-    // Revisar si tenemos un precio válido y reciente en caché
+    const cacheKey = `${exchangeId}-${rawSymbol}-${type}`;
     if (priceCache[cacheKey] && Date.now() - priceCache[cacheKey].timestamp < CACHE_TTL_MS) {
       return NextResponse.json({ price: priceCache[cacheKey].price, cached: true });
     }
 
-    const exchange = getExchange(exchangeId);
-
-    const ticker = await fetchWithRetry(exchange, symbol);
-
-    // Compra = ask (precio más bajo de venta), Venta = bid (precio más alto de compra)
-    let price = type === 'compra' ? ticker.ask : ticker.bid;
-
-    // Fallback si el orderbook está vacío
-    if (!price || price <= 0) {
-      price = ticker.last;
+    const fetcher = fetchers[exchangeId];
+    if (!fetcher) {
+      return NextResponse.json({ error: 'Exchange no soportado temporalmente' }, { status: 400 });
     }
 
-    if (!price || price <= 0) {
-      throw new Error('Precio no disponible en el exchange');
+    const isBuy = type === 'compra'; // Compra = necesitamos el Ask
+    const price = await fetcher(rawSymbol, isBuy);
+
+    if (!price || isNaN(price)) {
+      throw new Error('Precio inválido devuelto por la API');
     }
 
-    // Guardar el precio exitoso en caché
     priceCache[cacheKey] = { price, timestamp: Date.now() };
 
     return NextResponse.json({ price, cached: false });
 
   } catch (error: any) {
-    console.error(`CCXT Error [${exchangeId}]:`, error.message);
-    
-    // Si falló todo, limpiar caché de ese exchange para forzar reconexión la próxima vez
-    if (exchangeId && exchangeCache[exchangeId]) {
-      delete exchangeCache[exchangeId];
-    }
-
+    console.error(`Fetch API Error [${exchangeId}]:`, error.message);
     return NextResponse.json(
-      { error: error.message || 'Fallo de API externa' },
+      { error: error.message || 'Fallo de conexión con el exchange' },
       { status: 500 }
     );
   }
 }
+
