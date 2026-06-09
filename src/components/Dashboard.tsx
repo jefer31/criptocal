@@ -74,42 +74,92 @@ export default function Dashboard() {
       return;
     }
 
-    const fetchOnce = async (): Promise<any> => {
-      const res = await fetch(`/api/crypto?exchange=${exchange}&symbol=${cryptoAsset}&type=${type}`);
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Error de conexión');
+    const fetchDirect = async () => {
+      let url = '';
+      let sym = cryptoAsset;
+      let dec = 4;
+      
+      switch (exchange) {
+        case 'binance':
+          url = `https://api.binance.com/api/v3/ticker/bookTicker?symbol=${sym}`;
+          const resBin = await fetch(url).then(r => r.json());
+          return parseFloat(isCompra ? resBin.askPrice : resBin.bidPrice);
+          
+        case 'bybit':
+          url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${sym}`;
+          const resByb = await fetch(url).then(r => r.json());
+          return parseFloat(isCompra ? resByb.result.list[0].ask1Price : resByb.result.list[0].bid1Price);
+          
+        case 'mexc':
+          url = `https://api.mexc.com/api/v3/ticker/bookTicker?symbol=${sym}`;
+          const resMexc = await fetch(url).then(r => r.json());
+          return parseFloat(isCompra ? resMexc.askPrice : resMexc.bidPrice);
+          
+        case 'kucoin':
+          const kSym = sym.replace('USDT', '-USDT').replace('BTC', '-BTC');
+          url = `https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kSym}`;
+          const resKuc = await fetch(url).then(r => r.json());
+          return parseFloat(isCompra ? resKuc.data.bestAsk : resKuc.data.bestBid);
+          
+        case 'okx':
+          const oSym = sym.replace('USDT', '-USDT').replace('BTC', '-BTC');
+          url = `https://www.okx.com/api/v5/market/ticker?instId=${oSym}`;
+          const resOkx = await fetch(url).then(r => r.json());
+          return parseFloat(isCompra ? resOkx.data[0].askPx : resOkx.data[0].bidPx);
+          
+        case 'bitget':
+          url = `https://api.bitget.com/api/v2/spot/market/tickers?symbol=${sym}`;
+          const resBit = await fetch(url).then(r => r.json());
+          return parseFloat(isCompra ? resBit.data[0].askPr : resBit.data[0].bidPr);
+          
+        case 'gateio':
+          const gSym = sym.replace('USDT', '_USDT').replace('BTC', '_BTC');
+          url = `https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${gSym}`;
+          const resGate = await fetch(url).then(r => r.json());
+          return parseFloat(isCompra ? resGate[0].lowest_ask : resGate[0].highest_bid);
+          
+        case 'kraken':
+          let krSym = sym;
+          if (sym === 'BTCUSDT') krSym = 'XBTUSDT';
+          url = `https://api.kraken.com/0/public/Ticker?pair=${krSym}`;
+          const resKr = await fetch(url).then(r => r.json());
+          const pairKey = Object.keys(resKr.result)[0];
+          return parseFloat(isCompra ? resKr.result[pairKey].a[0] : resKr.result[pairKey].b[0]);
+          
+        default:
+          throw new Error('Exchange no soportado en modo directo');
       }
-      return await res.json();
     };
 
     try {
-      let data;
+      let price;
       try {
-        data = await fetchOnce();
-      } catch {
-        // Reintento automático después de 2 segundos
-        setStatus('🔄 Reintentando...');
-        await new Promise(r => setTimeout(r, 2000));
-        data = await fetchOnce();
+        price = await fetchDirect();
+      } catch (e) {
+        setStatus('🔄 Falló, conectando vía servidor...');
+        // Fallback al servidor Vercel si falla el frontend (ej. por CORS)
+        const res = await fetch(`/api/crypto?exchange=${exchange}&symbol=${cryptoAsset}&type=${type}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        price = data.price;
       }
       
-      if (data.price) {
-        let dec = parseFloat(data.price) > 500 ? 2 : (parseFloat(data.price) > 1 ? 4 : 6);
+      if (price && !isNaN(price)) {
+        let dec = parseFloat(price) > 500 ? 2 : (parseFloat(price) > 1 ? 4 : 6);
         if (cryptoAsset.includes('ARS') || cryptoAsset.includes('COP') || cryptoAsset.includes('CLP')) dec = 2;
         
-        const finalPrice = parseFloat(data.price).toFixed(dec);
+        const finalPrice = parseFloat(price).toFixed(dec);
         if (isCompra) setBuyPrice(finalPrice);
         else setSellPrice(finalPrice);
         
         setStatus('✅ Listo');
         setTimeout(() => setStatus(''), 1200);
       } else {
-        throw new Error('Sin datos de precio');
+        throw new Error('Precio inválido');
       }
     } catch (err: any) {
       console.error(err);
-      setStatus(`⚠️ ${exchange} no respondió. Intenta de nuevo.`);
+      setStatus(`⚠️ ${exchange} bloqueado en tu región.`);
       setTimeout(() => setStatus(''), 4000);
     }
   };
