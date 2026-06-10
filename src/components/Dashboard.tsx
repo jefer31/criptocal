@@ -426,6 +426,113 @@ export default function Dashboard() {
             </span>
           </div>
         )}
+
+        {result && (
+          <div className="share-result-container">
+            <button className="btn-share" onClick={async () => {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              if (!ctx) return;
+              
+              canvas.width = 600;
+              canvas.height = 400;
+              
+              // Background gradient
+              const bg = ctx.createLinearGradient(0, 0, 600, 400);
+              bg.addColorStop(0, '#0a0a1a');
+              bg.addColorStop(1, '#111827');
+              ctx.fillStyle = bg;
+              ctx.fillRect(0, 0, 600, 400);
+              
+              // Border accent
+              ctx.strokeStyle = '#00ADB5';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(1, 1, 598, 398);
+              
+              // Header
+              ctx.fillStyle = '#00ADB5';
+              ctx.font = 'bold 22px Inter, Arial, sans-serif';
+              ctx.fillText('📊 CriptoCal — Resultado de Arbitraje', 30, 45);
+              
+              // Divider
+              ctx.strokeStyle = 'rgba(0, 173, 181, 0.3)';
+              ctx.lineWidth = 1;
+              ctx.beginPath(); ctx.moveTo(30, 60); ctx.lineTo(570, 60); ctx.stroke();
+              
+              // Route info
+              ctx.fillStyle = '#9CA3AF';
+              ctx.font = '15px Inter, Arial, sans-serif';
+              ctx.fillText(`${cryptoAsset}  •  ${exchangeSource.toUpperCase()} ➔ ${exchangeTarget.toUpperCase()}`, 30, 90);
+              
+              // Data rows
+              const rows = [
+                ['Capital invertido', `${capitalTag} ${capital.toFixed(2)}`],
+                ['Precio de Compra', `${result.monDestino} ${buyPrice}`],
+                [calcStrategy === 'manual' ? 'Precio de Venta' : 'Precio Sugerido', `${result.monDestino} ${result.precioDeVentaUtilizado}`],
+                ['Retorno Neto', `${result.monDestino} ${result.retornoNetoFinal}`],
+              ];
+              
+              let y = 130;
+              rows.forEach(([label, value]) => {
+                ctx.fillStyle = '#6B7280';
+                ctx.font = '14px Inter, Arial, sans-serif';
+                ctx.fillText(label, 30, y);
+                ctx.fillStyle = '#E5E7EB';
+                ctx.font = 'bold 14px Inter, Arial, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(value, 570, y);
+                ctx.textAlign = 'left';
+                y += 35;
+              });
+              
+              // Spread highlight
+              ctx.fillStyle = 'rgba(0, 173, 181, 0.1)';
+              ctx.fillRect(20, y + 5, 560, 50);
+              ctx.strokeStyle = 'rgba(0, 173, 181, 0.4)';
+              ctx.strokeRect(20, y + 5, 560, 50);
+              
+              ctx.fillStyle = '#00ADB5';
+              ctx.font = 'bold 16px Inter, Arial, sans-serif';
+              ctx.fillText('Spread Neto Final', 35, y + 36);
+              ctx.fillStyle = result.isPositive ? '#10B981' : '#EF4444';
+              ctx.font = 'bold 22px Inter, Arial, sans-serif';
+              ctx.textAlign = 'right';
+              ctx.fillText(`${result.spreadNetoPorcentaje}%`, 565, y + 38);
+              ctx.textAlign = 'left';
+              
+              // Footer
+              ctx.fillStyle = '#4B5563';
+              ctx.font = '12px Inter, Arial, sans-serif';
+              ctx.fillText('criptocal.vercel.app — Calculadora de Arbitraje Cripto Profesional', 30, 380);
+              ctx.fillText(new Date().toLocaleString('es-ES'), 430, 380);
+              
+              // Convert to blob and share/download
+              canvas.toBlob(async (blob) => {
+                if (!blob) return;
+                const file = new File([blob], 'criptocal-resultado.png', { type: 'image/png' });
+                
+                if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                  try {
+                    await navigator.share({
+                      title: 'CriptoCal — Resultado de Arbitraje',
+                      text: `Spread de ${result.spreadNetoPorcentaje}% encontrado en ${cryptoAsset} (${exchangeSource} ➔ ${exchangeTarget}). Calculado con criptocal.vercel.app`,
+                      files: [file],
+                    });
+                  } catch { /* user cancelled */ }
+                } else {
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'criptocal-resultado.png';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }
+              }, 'image/png');
+            }}>
+              📤 Compartir Resultado
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

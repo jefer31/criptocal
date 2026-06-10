@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { supabase } from '../lib/supabase';
 import Dashboard from '../components/Dashboard';
+import SpreadScanner from '../components/SpreadScanner';
 import HistoryTable from '../components/HistoryTable';
 import MathCalculator from '../components/MathCalculator';
 import ProfileSettings from '../components/ProfileSettings';
@@ -377,6 +378,7 @@ export default function Home() {
         </div>
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
+            <SpreadScanner />
             <Dashboard />
         </div>
 
