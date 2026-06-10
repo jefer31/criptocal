@@ -116,11 +116,16 @@ export default function AlertConfig() {
         </div>
         
         <div className="mb-6 p-4 rounded-lg bg-blue-900 bg-opacity-20 border border-blue-800 text-sm text-blue-200">
-          <p className="mb-2 font-bold text-blue-400">🤖 ¿Cómo conecto mi Telegram?</p>
+          <p className="mb-3 font-bold text-blue-400">🤖 ¿Cómo conecto mi Telegram?</p>
+          <div className="mb-4">
+            <a href="https://t.me/CriptoCal_bot" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold transition-all text-decoration-none">
+              <span>🚀</span> Abrir Telegram y Enlazar Bot
+            </a>
+          </div>
           <ol className="list-decimal pl-4 space-y-1">
-            <li>Abre Telegram y busca a nuestro bot oficial: <strong>@CriptoCalBot</strong></li>
-            <li>Envíale el mensaje <strong>/start</strong></li>
-            <li>El bot te responderá con tu <strong>Chat ID</strong> (un número largo).</li>
+            <li>Haz clic en el botón azul de arriba.</li>
+            <li>Se abrirá Telegram, presiona <strong>"Iniciar"</strong> o envía el comando <strong>/start</strong>.</li>
+            <li>El bot te responderá automáticamente con tu <strong>Chat ID</strong> (un número largo).</li>
             <li>Copia ese número y pégalo aquí abajo.</li>
           </ol>
         </div>
