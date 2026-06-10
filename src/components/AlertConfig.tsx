@@ -95,11 +95,12 @@ export default function AlertConfig() {
         setConfig(data.config);
         alert('✅ Configuración de alertas guardada correctamente.');
       } else {
-        alert('❌ Error al guardar. Verifica tu conexión.');
+        const errData = await res.json();
+        alert(`❌ Error al guardar: ${errData.error || 'Verifica tu conexión.'}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('❌ Hubo un error inesperado al guardar.');
+      alert(`❌ Hubo un error inesperado al guardar: ${err.message}`);
     }
     setSaving(false);
   };
