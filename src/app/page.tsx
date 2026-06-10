@@ -8,6 +8,7 @@ import SpreadScanner from '../components/SpreadScanner';
 import HistoryTable from '../components/HistoryTable';
 import MathCalculator from '../components/MathCalculator';
 import ProfileSettings from '../components/ProfileSettings';
+import AlertConfig from '../components/AlertConfig';
 
 export default function Home() {
   
@@ -338,11 +339,16 @@ export default function Home() {
         </div>
 
         <div className="sidebar-menu">
-            <div className={`menu-item ${activeTab === 'calculadora' ? 'active' : ''}`} id="menu-calculadora" onClick={() => { setActiveTab('calculadora'); setIsSidebarOpen(false); }}>📊 Calculadora Pro</div>
-            <div className={`menu-item ${activeTab === 'historial' ? 'active' : ''}`} id="menu-historial" onClick={() => { 
+                            <div className={`menu-item ${activeTab === 'calculadora' ? 'active' : ''}`} onClick={() => { setActiveTab('calculadora'); setIsSidebarOpen(false); }}>
+                                <span>📈</span> Pro Arbitraje
+                            </div>
+                            <div className={`menu-item ${activeTab === 'alertas' ? 'active' : ''}`} onClick={() => { setActiveTab('alertas'); setIsSidebarOpen(false); }}>
+                                <span>🔔</span> Alertas Bot
+                            </div>
+                            <div className={`menu-item ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => { 
               if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
               setActiveTab('historial'); setIsSidebarOpen(false); 
-            }}>⏳ Historial Local</div>
+            }}><span>📋</span> Mis Operaciones</div>
             <div className={`menu-item ${activeTab === 'matematica' ? 'active' : ''}`} id="menu-matematica" onClick={() => { setActiveTab('matematica'); setIsSidebarOpen(false); }}>🧮 Calculadora Común</div>
             <div className={`menu-item ${activeTab === 'perfil' ? 'active' : ''}`} id="menu-perfil" onClick={() => { 
               if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
@@ -372,7 +378,7 @@ export default function Home() {
                 <span></span>
             </button>
             <h2 id="mainContentTabTitle">
-                {activeTab === 'calculadora' ? 'Calculadora Pro' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : 'Mi Cuenta'}
+                {activeTab === 'calculadora' ? 'Calculadora Pro' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
             </h2>
             <div  id="topHeaderClock">{currentTime}</div>
         </div>
@@ -392,6 +398,10 @@ export default function Home() {
 
         <div id="perfil-tab" className={`tab-content ${activeTab === 'perfil' ? 'active' : ''}`}>
             <ProfileSettings />
+        </div>
+
+        <div id="alertas-tab" className={`tab-content ${activeTab === 'alertas' ? 'active' : ''}`}>
+            <AlertConfig />
         </div>
 
     </div>
