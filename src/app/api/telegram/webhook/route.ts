@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
       // Si el usuario presiona "Iniciar" (/start)
       if (text === '/start') {
-        const welcomeMessage = `¡Hola, ${body.message.chat.first_name || 'Trader'}! Bienvenido a las alertas automáticas de CriptoCal 🚀\n\nTu Telegram Chat ID secreto es:\n\`${chatId}\`\n\n*(Toca el número para copiarlo)*\n\nRegresa a la página web de CriptoCal, pégalo en la configuración y dale a Guardar.`;
+        const welcomeMessage = `¡Hola, <b>${body.message.chat.first_name || 'Trader'}</b>! Bienvenido a las alertas automáticas de CriptoCal 🚀\n\nTu Telegram Chat ID secreto es:\n<code>${chatId}</code>\n\n<i>(Toca el número para copiarlo)</i>\n\nRegresa a la página web de CriptoCal, pégalo en la configuración y dale a Guardar.`;
         
         const tgUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
         await fetch(tgUrl, {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
           body: JSON.stringify({
             chat_id: chatId,
             text: welcomeMessage,
-            parse_mode: 'Markdown'
+            parse_mode: 'HTML'
           })
         });
       }
