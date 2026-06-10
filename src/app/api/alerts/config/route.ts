@@ -1,29 +1,27 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase as anonSupabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; 
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 export async function GET(request: Request) {
   try {
-    // Note: In App Router, getting the session from cookies usually requires @supabase/ssr
-    // But since this is a simple API, we'll rely on the client passing an Authorization header 
-    // or we can fetch by user_id if passed. Actually, the easiest way for now is to pass user_id in headers/query 
-    // or rely on Supabase RLS. Let's assume we pass the session token or user_id.
-    
-    // To keep it simple and stateless without extra packages, we expect the frontend 
-    // to pass the user's access token in the Authorization header.
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
-      // Fallback: If no header, just return empty config (Client will handle)
       return NextResponse.json({ error: 'No auth header' }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userError } = await anonSupabase.auth.getUser(token);
     
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data, error } = await supabase
+    // Usamos el admin para saltarnos las restricciones RLS (ya validamos al usuario arriba)
+    const { data, error } = await supabaseAdmin
       .from('user_alerts')
       .select('*')
       .eq('user_id', user.id)
@@ -47,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userError } = await anonSupabase.auth.getUser(token);
     
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -56,8 +54,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { pair, exchange_buy, exchange_sell, min_spread, telegram_chat_id, is_active } = body;
 
-    // Upsert the config
-    const { data, error } = await supabase
+    // Usamos el admin para el upsert y así evitar el error de "violates row-level security policy"
+    const { data, error } = await supabaseAdmin
       .from('user_alerts')
       .upsert({
         user_id: user.id,
