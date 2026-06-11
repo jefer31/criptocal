@@ -10,109 +10,98 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey || process.env.NEX
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 async function fetchPrice(exchange: string, symbol: string): Promise<{ ask: number; bid: number } | null> {
+  let ask = 0, bid = 0;
+
+  // Step 1: Try the exchange API (each wrapped in try-catch so geo-blocks don't abort)
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
-    let ask = 0, bid = 0;
-
     const opts = { signal: controller.signal };
 
     switch (exchange) {
       case 'binance': {
-        // Try global first, then .us fallback
-        let res;
         try {
-          res = await fetch(`https://api.binance.com/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
-          if (res.askPrice) {
-            ask = parseFloat(res.askPrice);
-            bid = parseFloat(res.bidPrice);
-          }
-        } catch (_) { /* global blocked, try .us */ }
+          const res = await fetch(`https://api.binance.com/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
+          if (res.askPrice) { ask = parseFloat(res.askPrice); bid = parseFloat(res.bidPrice); }
+        } catch (_) {}
         if (!ask) {
           try {
-            res = await fetch(`https://api.binance.us/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
-            ask = parseFloat(res.askPrice);
-            bid = parseFloat(res.bidPrice);
-          } catch (_) { /* .us also failed */ }
+            const res = await fetch(`https://api.binance.us/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
+            if (res.askPrice) { ask = parseFloat(res.askPrice); bid = parseFloat(res.bidPrice); }
+          } catch (_) {}
         }
         break;
       }
       case 'bybit': {
-        const res = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`, opts).then(r => r.json());
-        if (res.result?.list?.[0]) {
-          ask = parseFloat(res.result.list[0].ask1Price);
-          bid = parseFloat(res.result.list[0].bid1Price);
-        }
+        try {
+          const res = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`, opts).then(r => r.json());
+          if (res.result?.list?.[0]) { ask = parseFloat(res.result.list[0].ask1Price); bid = parseFloat(res.result.list[0].bid1Price); }
+        } catch (_) {}
         break;
       }
       case 'mexc': {
-        const res = await fetch(`https://api.mexc.com/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
-        if (res.askPrice) {
-          ask = parseFloat(res.askPrice);
-          bid = parseFloat(res.bidPrice);
-        }
+        try {
+          const res = await fetch(`https://api.mexc.com/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
+          if (res.askPrice) { ask = parseFloat(res.askPrice); bid = parseFloat(res.bidPrice); }
+        } catch (_) {}
         break;
       }
       case 'kucoin': {
-        const kSym = symbol.replace('USDT', '-USDT');
-        const res = await fetch(`https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kSym}`, opts).then(r => r.json());
-        if (res.data?.bestAsk) {
-          ask = parseFloat(res.data.bestAsk);
-          bid = parseFloat(res.data.bestBid);
-        }
+        try {
+          const kSym = symbol.replace('USDT', '-USDT');
+          const res = await fetch(`https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kSym}`, opts).then(r => r.json());
+          if (res.data?.bestAsk) { ask = parseFloat(res.data.bestAsk); bid = parseFloat(res.data.bestBid); }
+        } catch (_) {}
         break;
       }
       case 'okx': {
-        const oSym = symbol.replace('USDT', '-USDT');
-        const res = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${oSym}`, opts).then(r => r.json());
-        if (res.data?.[0]?.askPx) {
-          ask = parseFloat(res.data[0].askPx);
-          bid = parseFloat(res.data[0].bidPx);
-        }
+        try {
+          const oSym = symbol.replace('USDT', '-USDT');
+          const res = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${oSym}`, opts).then(r => r.json());
+          if (res.data?.[0]?.askPx) { ask = parseFloat(res.data[0].askPx); bid = parseFloat(res.data[0].bidPx); }
+        } catch (_) {}
         break;
       }
       case 'bitget': {
-        const res = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`, opts).then(r => r.json());
-        if (res.data?.[0]?.askPr) {
-          ask = parseFloat(res.data[0].askPr);
-          bid = parseFloat(res.data[0].bidPr);
-        }
+        try {
+          const res = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`, opts).then(r => r.json());
+          if (res.data?.[0]?.askPr) { ask = parseFloat(res.data[0].askPr); bid = parseFloat(res.data[0].bidPr); }
+        } catch (_) {}
         break;
       }
       default:
-        return null;
+        break;
     }
     clearTimeout(timeout);
-
-    // If exchange API failed (geo-blocked), use CoinGecko as universal fallback
-    if (!ask || !bid || isNaN(ask) || isNaN(bid)) {
-      try {
-        const coinId = symbol.replace('USDT', '').toLowerCase();
-        const coinMap: Record<string, string> = {
-          btc: 'bitcoin', eth: 'ethereum', sol: 'solana', bnb: 'binancecoin', xrp: 'ripple'
-        };
-        const geckoId = coinMap[coinId] || coinId;
-        const geckoRes = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${geckoId}&vs_currencies=usd&include_24hr_change=true`,
-          { signal: AbortSignal.timeout(5000) }
-        ).then(r => r.json());
-        
-        if (geckoRes[geckoId]?.usd) {
-          const price = geckoRes[geckoId].usd;
-          // CoinGecko gives mid-price, simulate small spread
-          ask = price * 1.0001;
-          bid = price * 0.9999;
-        }
-      } catch (_) { /* CoinGecko also failed */ }
-    }
-
-    if (ask > 0 && bid > 0 && !isNaN(ask) && !isNaN(bid)) {
-      return { ask, bid };
-    }
-    return null;
-  } catch (error) {
-    return null;
+  } catch (_) {
+    // Outer catch — exchange step failed entirely, continue to fallback
   }
+
+  // Step 2: If exchange didn't return valid prices, use CoinGecko as universal fallback
+  if (!ask || !bid || isNaN(ask) || isNaN(bid)) {
+    try {
+      const coinId = symbol.replace('USDT', '').toLowerCase();
+      const coinMap: Record<string, string> = {
+        btc: 'bitcoin', eth: 'ethereum', sol: 'solana', bnb: 'binancecoin', xrp: 'ripple'
+      };
+      const geckoId = coinMap[coinId] || coinId;
+      const geckoRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${geckoId}&vs_currencies=usd`,
+        { signal: AbortSignal.timeout(5000) }
+      ).then(r => r.json());
+
+      if (geckoRes[geckoId]?.usd) {
+        const price = geckoRes[geckoId].usd;
+        ask = price * 1.0001;
+        bid = price * 0.9999;
+      }
+    } catch (_) { /* CoinGecko also failed */ }
+  }
+
+  if (ask > 0 && bid > 0 && !isNaN(ask) && !isNaN(bid)) {
+    return { ask, bid };
+  }
+  return null;
 }
 
 export async function GET(request: Request) {
