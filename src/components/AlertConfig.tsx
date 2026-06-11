@@ -22,7 +22,7 @@ export default function AlertConfig() {
   const [pair, setPair] = useState('BTCUSDT');
   const [exchangeBuy, setExchangeBuy] = useState('binance');
   const [exchangeSell, setExchangeSell] = useState('bybit');
-  const [minSpread, setMinSpread] = useState(0.5);
+  const [minSpread, setMinSpread] = useState(-10);
   const [chatId, setChatId] = useState('');
   const [isActive, setIsActive] = useState(true);
 

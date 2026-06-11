@@ -64,15 +64,17 @@ async function fetchPrice(exchange: string, symbol: string): Promise<number | nu
 }
 
 export async function GET(request: Request) {
-  // Protect this route so only the cron job can call it. 
-  // Normally you check a custom header like Authorization: Bearer CRON_SECRET
+  const url = new URL(request.url);
+  const debugMode = url.searchParams.get('debug') === 'true';
+  const forceNotify = url.searchParams.get('force') === 'true';
+
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   if (!TELEGRAM_BOT_TOKEN) {
-    return NextResponse.json({ error: 'Telegram Bot Token not configured' }, { status: 500 });
+    return NextResponse.json({ error: 'Telegram Bot Token not configured', hasToken: false }, { status: 500 });
   }
 
   try {
@@ -84,41 +86,58 @@ export async function GET(request: Request) {
 
     if (error) throw error;
     if (!alerts || alerts.length === 0) {
-      return NextResponse.json({ message: 'No active alerts to process' });
+      return NextResponse.json({ message: 'No active alerts to process', alertCount: 0 });
     }
 
     let notificationsSent = 0;
+    const debugInfo: any[] = [];
 
-    // 2. Group by pair + exchanges to avoid fetching the same price multiple times
-    // For simplicity, we will just iterate and fetch in this version
+    // 2. Process each alert
     for (const alert of alerts) {
+      const alertDebug: any = {
+        alertId: alert.id,
+        pair: alert.pair,
+        chatId: alert.telegram_chat_id,
+        exchangeBuy: alert.exchange_buy,
+        exchangeSell: alert.exchange_sell,
+        minSpread: alert.min_spread,
+        isActive: alert.is_active,
+      };
+
       const buyData: any = await fetchPrice(alert.exchange_buy, alert.pair);
       const sellData: any = await fetchPrice(alert.exchange_sell, alert.pair);
+
+      alertDebug.buyDataRaw = buyData;
+      alertDebug.sellDataRaw = sellData;
 
       if (buyData && sellData) {
         const buyPrice = buyData.ask;
         const sellPrice = sellData.bid;
         
+        alertDebug.buyPrice = buyPrice;
+        alertDebug.sellPrice = sellPrice;
+
         if (buyPrice > 0 && sellPrice > 0) {
           const spread = ((sellPrice - buyPrice) / buyPrice) * 100;
+          alertDebug.spread = spread;
+          alertDebug.wouldNotify = spread >= alert.min_spread;
 
-          if (spread >= alert.min_spread) {
-            // 3. Send Telegram Message
+          if (spread >= alert.min_spread || forceNotify) {
             const message = `
 🚨 *OPORTUNIDAD DE ARBITRAJE* 🚨
 
 Par: *${alert.pair}*
-Comprar en: *${alert.exchange_buy.toUpperCase()}* ($${buyPrice})
-Vender en: *${alert.exchange_sell.toUpperCase()}* ($${sellPrice})
+Comprar en: *${alert.exchange_buy.toUpperCase()}* ($${buyPrice.toFixed(2)})
+Vender en: *${alert.exchange_sell.toUpperCase()}* ($${sellPrice.toFixed(2)})
 
-✅ *Spread Bruto: ${spread.toFixed(2)}%*
+✅ *Spread Bruto: ${spread.toFixed(4)}%*
 
 Calcula las comisiones y red en:
 [CriptoCal](https://criptocal.vercel.app)
-            `;
+            `.trim();
 
             const tgUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-            await fetch(tgUrl, {
+            const tgRes = await fetch(tgUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -127,13 +146,25 @@ Calcula las comisiones y red en:
                 parse_mode: 'Markdown'
               })
             });
-            notificationsSent++;
+            const tgResult = await tgRes.json();
+            alertDebug.telegramResponse = tgResult;
+            if (tgResult.ok) {
+              notificationsSent++;
+            }
           }
+        } else {
+          alertDebug.error = 'Prices are zero or negative';
         }
+      } else {
+        alertDebug.error = `Failed to fetch prices: buy=${!!buyData}, sell=${!!sellData}`;
       }
+
+      debugInfo.push(alertDebug);
     }
 
-    return NextResponse.json({ success: true, processed: alerts.length, notificationsSent });
+    const responseBody: any = { success: true, processed: alerts.length, notificationsSent };
+    if (debugMode) responseBody.debug = debugInfo;
+    return NextResponse.json(responseBody);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
