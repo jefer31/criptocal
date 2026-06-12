@@ -131,7 +131,7 @@ export default function MathCalculator() {
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+    <div className="standard-calc">
       {/* Calculator Widget */}
       <div className="math-calculator-widget">
         <div className="math-calc-screen">
