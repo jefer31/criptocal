@@ -2,7 +2,7 @@
   "name": "CriptoCal Pro",
   "short_name": "CriptoCal",
   "description": "Calculadora y Scanner de Arbitraje Cripto",
-  "start_url": "/",
+  "start_url": "/?v=2",
   "display": "standalone",
   "background_color": "#0a0a1a",
   "theme_color": "#0a0a1a",
