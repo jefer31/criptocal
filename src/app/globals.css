@@ -1101,3 +1101,17 @@
     display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .btn-share:hover { background: rgba(0, 173, 181, 0.1); box-shadow: 0 0 15px rgba(0, 173, 181, 0.2); }
+
+
+/* RUTAS FAVORITAS */
+.btn-save-route { background: transparent; border: 1px solid var(--border); color: var(--text-color); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.btn-save-route:hover { border-color: var(--warning); color: var(--warning); background: rgba(255, 183, 77, 0.1); }
+.saved-routes-container { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px dashed var(--border); }
+.saved-routes-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 10px; }
+.saved-routes-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.saved-route-chip { background: var(--card-bg-light); border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; overflow: hidden; transition: all 0.2s ease; }
+.saved-route-chip:hover { border-color: var(--primary); }
+.saved-route-chip span { padding: 8px 12px; font-size: 13px; font-weight: 600; color: var(--text-color); cursor: pointer; }
+.saved-route-chip span:hover { background: rgba(0, 173, 181, 0.1); color: var(--primary); }
+.del-route-btn { background: rgba(255, 82, 82, 0.1); border: none; border-left: 1px solid var(--border); color: var(--danger); padding: 8px 10px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.2s ease; }
+.del-route-btn:hover { background: var(--danger); color: white; }

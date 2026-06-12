@@ -1,6 +1,12 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+
+interface SavedRoute {
+  asset: string;
+  source: string;
+  target: string;
+}
 
 export default function Dashboard() {
   const [calcStrategy, setCalcStrategy] = useState<'manual' | 'objetivo'>('manual');
@@ -21,6 +27,44 @@ export default function Dashboard() {
   const [liveStatusSell, setLiveStatusSell] = useState('');
   
   const [result, setResult] = useState<any>(null);
+
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('criptocal_routes');
+    if (saved) {
+      try {
+        setSavedRoutes(JSON.parse(saved));
+      } catch (e) {}
+    }
+  }, []);
+
+  const saveRoute = () => {
+    const newRoute = { asset: cryptoAsset, source: exchangeSource, target: exchangeTarget };
+    if (savedRoutes.some(r => r.asset === newRoute.asset && r.source === newRoute.source && r.target === newRoute.target)) {
+      alert('Esta ruta ya está guardada en tus favoritos.');
+      return;
+    }
+    const updated = [...savedRoutes, newRoute];
+    setSavedRoutes(updated);
+    localStorage.setItem('criptocal_routes', JSON.stringify(updated));
+  };
+
+  const loadRoute = (route: SavedRoute) => {
+    setCryptoAsset(route.asset);
+    setExchangeSource(route.source);
+    setExchangeTarget(route.target);
+    setBuyPrice('');
+    setSellPrice('');
+    setResult(null);
+  };
+
+  const deleteRoute = (index: number) => {
+    const updated = [...savedRoutes];
+    updated.splice(index, 1);
+    setSavedRoutes(updated);
+    localStorage.setItem('criptocal_routes', JSON.stringify(updated));
+  };
 
   const getCurrencyTags = () => {
     let networkTag = 'Tokens';
@@ -243,7 +287,27 @@ export default function Dashboard() {
   return (
     <div className="standard-calc">
       <div className="calc-panel-box" onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') calculateArbitrage(); }}>
-        <div className="panel-title-bar"><span>📥</span> Parámetros de Operación Cruzada</div>
+        <div className="panel-title-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><span>📥</span> Parámetros de Operación Cruzada</div>
+          <button className="btn-save-route" onClick={saveRoute} type="button">⭐ Guardar Ruta</button>
+        </div>
+        
+        {savedRoutes.length > 0 && (
+          <div className="saved-routes-container">
+            <span className="saved-routes-label">Rutas Rápidas Guardadas:</span>
+            <div className="saved-routes-list">
+              {savedRoutes.map((route, i) => (
+                <div key={i} className="saved-route-chip">
+                  <span onClick={() => loadRoute(route)}>
+                    {route.asset.replace('USDT', '')}: {route.source.toUpperCase()} ➔ {route.target.toUpperCase()}
+                  </span>
+                  <button type="button" className="del-route-btn" onClick={() => deleteRoute(i)} title="Eliminar ruta">×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="calc-mode-switch-container">
           <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} onClick={() => setCalcStrategy('manual')}>Modo Manual</button>
           <button className={`mode-switch-btn ${calcStrategy === 'objetivo' ? 'active' : ''}`} onClick={() => setCalcStrategy('objetivo')}>Modo Objetivo %</button>
