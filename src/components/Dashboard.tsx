@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getDefaultNetworkFee } from '../data/networkFees';
 
 interface SavedRoute {
   asset: string;
@@ -20,7 +21,7 @@ export default function Dashboard() {
   
   const [buyFee, setBuyFee] = useState(0.1);
   const [sellFee, setSellFee] = useState(0.1);
-  const [networkFee, setNetworkFee] = useState(0);
+  const [networkFee, setNetworkFee] = useState(0.0002); // Set default based on initial BTCUSDT binance
   const [targetMargin, setTargetMargin] = useState(1.5);
   
   const [liveStatusBuy, setLiveStatusBuy] = useState('');
@@ -38,6 +39,12 @@ export default function Dashboard() {
       } catch (e) {}
     }
   }, []);
+
+  useEffect(() => {
+    // Cuando el usuario cambia de moneda o de exchange de origen, auto-completar la comisión estimada
+    const defaultFee = getDefaultNetworkFee(exchangeSource, cryptoAsset);
+    setNetworkFee(defaultFee);
+  }, [cryptoAsset, exchangeSource]);
 
   const saveRoute = () => {
     const newRoute = { asset: cryptoAsset, source: exchangeSource, target: exchangeTarget };
