@@ -125,7 +125,7 @@
             letter-spacing: 0.5px;
         }
 
-        .form-group input, .input-group input, .form-group select {
+        .form-group input, .input-group input, .form-group select, .input-group select {
             width: 100%;
             background: var(--card-bg-light);
             border: 1px solid var(--border);
@@ -135,6 +135,7 @@
             font-family: inherit;
             font-size: 14px;
             transition: all 0.2s ease;
+            max-width: 100%;
         }
 
         select optgroup {
@@ -150,7 +151,7 @@
             font-weight: 500;
         }
 
-        .form-group input:focus, .input-group input:focus, .form-group select:focus {
+        .form-group input:focus, .input-group input:focus, .form-group select:focus, .input-group select:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 12px var(--primary-glow);
