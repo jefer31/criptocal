@@ -1,6 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#0a0a1a",
+};
 
 export const metadata: Metadata = {
   title: "CriptoCal — Calculadora de Arbitraje de Criptomonedas",
@@ -8,6 +12,7 @@ export const metadata: Metadata = {
     "Plataforma profesional para calcular spreads y oportunidades de arbitraje entre exchanges de criptomonedas. Precios en tiempo real, historial en la nube y modo objetivo.",
   keywords: "arbitraje, criptomonedas, bitcoin, spread, calculadora, binance, bybit, crypto",
   authors: [{ name: "CriptoCal" }],
+  manifest: "/manifest.json",
   openGraph: {
     title: "CriptoCal — Calculadora de Arbitraje de Criptomonedas",
     description: "Calcula spreads y oportunidades de arbitraje entre los mejores exchanges del mundo.",
