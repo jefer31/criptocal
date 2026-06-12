@@ -9,7 +9,7 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/logo-rounded.png",
+      "src": "/api/icon-rounded?v=1",
       "sizes": "512x512 1024x1024",
       "type": "image/png",
       "purpose": "any"
