@@ -13,6 +13,7 @@ export async function GET(request: Request) {
         <div
           style={{
             display: 'flex',
+            background: '#0a0a0f',
             width: '100%',
             height: '100%',
             alignItems: 'center',
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
           <img
             src={logoUrl}
             alt="Logo"
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{ width: '85%', height: '85%', objectFit: 'contain' }}
           />
         </div>
       ),
