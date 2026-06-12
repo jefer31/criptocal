@@ -1115,3 +1115,14 @@
 .saved-route-chip span:hover { background: rgba(0, 173, 181, 0.1); color: var(--primary); }
 .del-route-btn { background: rgba(255, 82, 82, 0.1); border: none; border-left: 1px solid var(--border); color: var(--danger); padding: 8px 10px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.2s ease; }
 .del-route-btn:hover { background: var(--danger); color: white; }
+
+
+/* MOBILE RESPONSIVENESS FIXES */
+@media (max-width: 768px) {
+  .main-content { padding: 15px; }
+  .content-header h2 { font-size: 22px; }
+  .standard-calc { gap: 16px; }
+  .calc-panel-box { padding: 16px; }
+  .input-grid-2 { grid-template-columns: 1fr; }
+  .table-header-actions { flex-direction: column; align-items: flex-start; }
+}
