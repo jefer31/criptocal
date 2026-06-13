@@ -9,8 +9,8 @@ export async function POST(request: Request) {
     }
 
     // Determinar precios
-    // $14.99/mes o $99.00/año (Aumentamos a 14.99 para superar el límite mínimo de $10 que exigen algunas redes)
-    const amount = planType === 'annual' ? 99.00 : 14.99;
+    // $14.99/mes o $149.00/año (Aumentamos a 14.99 para superar el límite mínimo de $10 que exigen algunas redes)
+    const amount = planType === 'annual' ? 149.00 : 14.99;
     const description = planType === 'annual' ? 'CriptoCal PRO - Plan Anual' : 'CriptoCal PRO - Plan Mensual';
 
     // Llamar a NowPayments API para crear un 'invoice'

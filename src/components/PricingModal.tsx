@@ -71,10 +71,10 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose, userEmail }) => {
             <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', background: 'var(--primary)', color: '#0a0a1a', padding: '5px 15px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>MÁS POPULAR</div>
             <h3 style={{ fontSize: '20px', color: 'var(--text-color)', marginBottom: '15px' }}>Plan Anual</h3>
             <div style={{ fontSize: '42px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '20px' }}>
-              $99.00<span style={{ fontSize: '16px', color: 'var(--text-muted)' }}>/año</span>
+              $149.00<span style={{ fontSize: '16px', color: 'var(--text-muted)' }}>/año</span>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, textAlign: 'left', marginBottom: '30px', color: 'var(--text-color)' }}>
-              <li style={{ marginBottom: '10px' }}>✅ <strong>Ahorras $20 USDT (2 meses gratis)</strong></li>
+              <li style={{ marginBottom: '10px' }}>✅ <strong>Ahorras $30 USDT (2 meses gratis)</strong></li>
               <li style={{ marginBottom: '10px' }}>✅ 0% Anuncios y publicidad</li>
               <li style={{ marginBottom: '10px' }}>✅ Alertas VIP instantáneas</li>
               <li style={{ marginBottom: '10px' }}>✅ Acceso prioritario a Inteligencia Artificial (Futuro)</li>
