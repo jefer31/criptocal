@@ -49,7 +49,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose, userEmail }) => {
           <div style={{ background: 'var(--bg-dark)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '30px', textAlign: 'center' }}>
             <h3 style={{ fontSize: '20px', color: 'var(--text-color)', marginBottom: '15px' }}>Plan Mensual</h3>
             <div style={{ fontSize: '42px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '20px' }}>
-              $9.99<span style={{ fontSize: '16px', color: 'var(--text-muted)' }}>/mes</span>
+              $14.99<span style={{ fontSize: '16px', color: 'var(--text-muted)' }}>/mes</span>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, textAlign: 'left', marginBottom: '30px', color: 'var(--text-color)' }}>
               <li style={{ marginBottom: '10px' }}>✅ 0% Anuncios y publicidad</li>
