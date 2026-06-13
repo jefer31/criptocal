@@ -30,6 +30,9 @@ const P2P_PAIRS = [
 const EXCHANGES = [
   { value: 'binance_p2p', label: 'Binance P2P' },
   { value: 'bybit_p2p', label: 'Bybit P2P' },
+  { value: 'bitget_p2p', label: 'Bitget P2P' },
+  { value: 'okx_p2p', label: 'OKX P2P' },
+  { value: 'mexc_p2p', label: 'MEXC P2P' },
   { value: 'eldorado', label: 'El Dorado' },
   { value: 'airtm', label: 'AirTM' },
   { value: 'localbitcoins', label: 'LocalBitcoins' },
