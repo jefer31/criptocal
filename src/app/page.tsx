@@ -399,7 +399,10 @@ export default function Home() {
                             <div className={`menu-item ${activeTab === 'calculadora' ? 'active' : ''}`} onClick={() => { setActiveTab('calculadora'); setIsSidebarOpen(false); }}>
                                 <span>📈</span> Pro Arbitraje
                             </div>
-                            <div className={`menu-item ${activeTab === 'alertas' ? 'active' : ''}`} onClick={() => { setActiveTab('alertas'); setIsSidebarOpen(false); }}>
+                            <div className={`menu-item ${activeTab === 'alertas' ? 'active' : ''}`} onClick={() => { 
+                              if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
+                              setActiveTab('alertas'); setIsSidebarOpen(false); 
+                            }}>
                                 <span>🔔</span> Alertas Bot
                             </div>
                             <div className={`menu-item ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => { 
