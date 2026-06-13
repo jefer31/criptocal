@@ -43,13 +43,13 @@ const SELL_METHODS = [
   { value: 'eldorado', label: 'El Dorado' },
   { value: 'airtm', label: 'AirTM' },
   { value: 'reserve', label: 'Reserve' },
-  { value: 'zinli', label: 'Zinli' },
-  { value: 'pago_movil', label: 'Pago Móvil' },
-  { value: 'zelle', label: 'Zelle' },
-  { value: 'nequi', label: 'Nequi' },
-  { value: 'mercadopago', label: 'MercadoPago' },
-  { value: 'paypal', label: 'PayPal' },
-  { value: 'wise', label: 'Wise' },
+  { value: 'zinli', label: 'Zinli', currencies: ['USD', 'PAB'] },
+  { value: 'pago_movil', label: 'Pago Móvil', currencies: ['VES'] },
+  { value: 'zelle', label: 'Zelle', currencies: ['USD'] },
+  { value: 'nequi', label: 'Nequi', currencies: ['COP'] },
+  { value: 'mercadopago', label: 'MercadoPago', currencies: ['ARS', 'MXN', 'BRL'] },
+  { value: 'paypal', label: 'PayPal', currencies: ['USD', 'EUR'] },
+  { value: 'wise', label: 'Wise', currencies: ['USD', 'EUR', 'GBP'] },
   { value: 'efectivo', label: 'Efectivo / Casa de Cambio' },
   { value: 'otro', label: 'Otro (Manual)' },
 ];
@@ -272,7 +272,7 @@ export default function Dashboard() {
           <div className="input-group">
             <label>Plataforma de Compra</label>
             <select value={buyMethod} onChange={(e) => setBuyMethod(e.target.value)}>
-              {BUY_METHODS.map(m => (
+              {BUY_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
@@ -280,7 +280,7 @@ export default function Dashboard() {
           <div className="input-group">
             <label>Plataforma de Venta</label>
             <select value={sellMethod} onChange={(e) => setSellMethod(e.target.value)}>
-              {SELL_METHODS.map(m => (
+              {SELL_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
