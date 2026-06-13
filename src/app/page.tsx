@@ -452,6 +452,7 @@ export default function Home() {
         </div>
 
         <div id="historial-tab" className={`tab-content ${activeTab === 'historial' ? 'active' : ''}`}>
+            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             <HistoryTable />
         </div>
 
@@ -469,6 +470,7 @@ export default function Home() {
         </div>
 
         <div id="alertas-tab" className={`tab-content ${activeTab === 'alertas' ? 'active' : ''}`}>
+            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             <AlertConfig />
         </div>
 
