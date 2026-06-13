@@ -33,8 +33,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose, userEmail }) => {
   };
 
   return (
-    <div className="terms-modal-overlay" style={{ zIndex: 10000, display: 'flex', background: 'rgba(10, 10, 26, 0.95)', backdropFilter: 'blur(10px)' }}>
-      <div className="terms-modal-card" style={{ maxWidth: '800px', width: '100%', padding: '40px', position: 'relative' }}>
+    <div className="terms-modal-overlay" style={{ zIndex: 10000, display: 'flex', background: 'rgba(10, 10, 26, 0.95)', backdropFilter: 'blur(10px)', padding: '20px' }}>
+      <div className="terms-modal-card" style={{ maxWidth: '800px', width: '100%', padding: '40px', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' }}>✕</button>
         
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
