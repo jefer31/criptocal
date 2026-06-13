@@ -1,66 +1,102 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { getDefaultNetworkFee } from '../data/networkFees';
 
 interface SavedRoute {
-  asset: string;
-  source: string;
-  target: string;
+  pair: string;
+  buyMethod: string;
+  sellMethod: string;
 }
+
+const P2P_PAIRS = [
+  { value: 'USDTVES', label: '🇻🇪 Bolívar Venezolano (USDT → VES)', currency: 'VES', capital: 'USDT' },
+  { value: 'USDTCOP', label: '🇨🇴 Peso Colombiano (USDT → COP)', currency: 'COP', capital: 'USDT' },
+  { value: 'USDTARS', label: '🇦🇷 Peso Argentino (USDT → ARS)', currency: 'ARS', capital: 'USDT' },
+  { value: 'USDTMXN', label: '🇲🇽 Peso Mexicano (USDT → MXN)', currency: 'MXN', capital: 'USDT' },
+  { value: 'USDTBRL', label: '🇧🇷 Real Brasileño (USDT → BRL)', currency: 'BRL', capital: 'USDT' },
+  { value: 'USDTPEN', label: '🇵🇪 Sol Peruano (USDT → PEN)', currency: 'PEN', capital: 'USDT' },
+  { value: 'USDTCLP', label: '🇨🇱 Peso Chileno (USDT → CLP)', currency: 'CLP', capital: 'USDT' },
+  { value: 'USDTEUR', label: '🇪🇺 Euro (USDT → EUR)', currency: 'EUR', capital: 'USDT' },
+  { value: 'USDTUSD', label: '🇺🇸 Dólar USA (USDT → USD)', currency: 'USD', capital: 'USDT' },
+  { value: 'USDTBOB', label: '🇧🇴 Boliviano (USDT → BOB)', currency: 'BOB', capital: 'USDT' },
+  { value: 'USDTPYG', label: '🇵🇾 Guaraní Paraguayo (USDT → PYG)', currency: 'PYG', capital: 'USDT' },
+  { value: 'USDTUYU', label: '🇺🇾 Peso Uruguayo (USDT → UYU)', currency: 'UYU', capital: 'USDT' },
+  { value: 'USDTDOP', label: '🇩🇴 Peso Dominicano (USDT → DOP)', currency: 'DOP', capital: 'USDT' },
+];
+
+const BUY_METHODS = [
+  { value: 'binance_p2p', label: 'Binance P2P' },
+  { value: 'bybit_p2p', label: 'Bybit P2P' },
+  { value: 'eldorado', label: 'El Dorado' },
+  { value: 'airtm', label: 'AirTM' },
+  { value: 'reserve', label: 'Reserve' },
+  { value: 'localbitcoins', label: 'LocalBitcoins' },
+  { value: 'paxful', label: 'Paxful' },
+  { value: 'efectivo', label: 'Efectivo / Casa de Cambio' },
+  { value: 'otro', label: 'Otro (Manual)' },
+];
+
+const SELL_METHODS = [
+  { value: 'binance_p2p', label: 'Binance P2P' },
+  { value: 'bybit_p2p', label: 'Bybit P2P' },
+  { value: 'eldorado', label: 'El Dorado' },
+  { value: 'airtm', label: 'AirTM' },
+  { value: 'reserve', label: 'Reserve' },
+  { value: 'zinli', label: 'Zinli' },
+  { value: 'pago_movil', label: 'Pago Móvil' },
+  { value: 'zelle', label: 'Zelle' },
+  { value: 'nequi', label: 'Nequi' },
+  { value: 'mercadopago', label: 'MercadoPago' },
+  { value: 'paypal', label: 'PayPal' },
+  { value: 'wise', label: 'Wise' },
+  { value: 'efectivo', label: 'Efectivo / Casa de Cambio' },
+  { value: 'otro', label: 'Otro (Manual)' },
+];
+
+const METHOD_LABELS: Record<string, string> = {};
+[...BUY_METHODS, ...SELL_METHODS].forEach(m => { METHOD_LABELS[m.value] = m.label; });
 
 export default function Dashboard() {
   const [calcStrategy, setCalcStrategy] = useState<'manual' | 'objetivo'>('manual');
-  const [cryptoAsset, setCryptoAsset] = useState('BTCUSDT');
-  const [exchangeSource, setExchangeSource] = useState('binance');
-  const [exchangeTarget, setExchangeTarget] = useState('bybit');
-  const [capital, setCapital] = useState(1000);
-  
+  const [selectedPair, setSelectedPair] = useState('USDTVES');
+  const [buyMethod, setBuyMethod] = useState('binance_p2p');
+  const [sellMethod, setSellMethod] = useState('zinli');
+  const [capital, setCapital] = useState(100);
+
   const [buyPrice, setBuyPrice] = useState('');
   const [sellPrice, setSellPrice] = useState('');
-  
-  const [buyFee, setBuyFee] = useState(0.1);
-  const [sellFee, setSellFee] = useState(0.1);
-  const [networkFee, setNetworkFee] = useState(0.0002); // Set default based on initial BTCUSDT binance
-  const [targetMargin, setTargetMargin] = useState(1.5);
-  
-  const [liveStatusBuy, setLiveStatusBuy] = useState('');
-  const [liveStatusSell, setLiveStatusSell] = useState('');
-  
-  const [result, setResult] = useState<any>(null);
 
+  const [buyFee, setBuyFee] = useState(0);
+  const [sellFee, setSellFee] = useState(0);
+  const [targetMargin, setTargetMargin] = useState(2.0);
+
+  const [result, setResult] = useState<any>(null);
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
 
+  const pairInfo = P2P_PAIRS.find(p => p.value === selectedPair) || P2P_PAIRS[0];
+
   useEffect(() => {
-    const saved = localStorage.getItem('criptocal_routes');
+    const saved = localStorage.getItem('criptocal_p2p_routes');
     if (saved) {
-      try {
-        setSavedRoutes(JSON.parse(saved));
-      } catch (e) {}
+      try { setSavedRoutes(JSON.parse(saved)); } catch (e) {}
     }
   }, []);
 
-  useEffect(() => {
-    // Cuando el usuario cambia de moneda o de exchange de origen, auto-completar la comisión estimada
-    const defaultFee = getDefaultNetworkFee(exchangeSource, cryptoAsset);
-    setNetworkFee(defaultFee);
-  }, [cryptoAsset, exchangeSource]);
-
   const saveRoute = () => {
-    const newRoute = { asset: cryptoAsset, source: exchangeSource, target: exchangeTarget };
-    if (savedRoutes.some(r => r.asset === newRoute.asset && r.source === newRoute.source && r.target === newRoute.target)) {
+    const newRoute = { pair: selectedPair, buyMethod, sellMethod };
+    if (savedRoutes.some(r => r.pair === newRoute.pair && r.buyMethod === newRoute.buyMethod && r.sellMethod === newRoute.sellMethod)) {
       alert('Esta ruta ya está guardada en tus favoritos.');
       return;
     }
     const updated = [...savedRoutes, newRoute];
     setSavedRoutes(updated);
-    localStorage.setItem('criptocal_routes', JSON.stringify(updated));
+    localStorage.setItem('criptocal_p2p_routes', JSON.stringify(updated));
   };
 
   const loadRoute = (route: SavedRoute) => {
-    setCryptoAsset(route.asset);
-    setExchangeSource(route.source);
-    setExchangeTarget(route.target);
+    setSelectedPair(route.pair);
+    setBuyMethod(route.buyMethod);
+    setSellMethod(route.sellMethod);
     setBuyPrice('');
     setSellPrice('');
     setResult(null);
@@ -70,222 +106,68 @@ export default function Dashboard() {
     const updated = [...savedRoutes];
     updated.splice(index, 1);
     setSavedRoutes(updated);
-    localStorage.setItem('criptocal_routes', JSON.stringify(updated));
+    localStorage.setItem('criptocal_p2p_routes', JSON.stringify(updated));
   };
 
-  const getCurrencyTags = () => {
-    let networkTag = 'Tokens';
-    let capitalTag = 'USDT';
-    
-    if (cryptoAsset === 'USDTUSDT' || cryptoAsset === 'USDCUSDT') networkTag = 'USDT';
-    else if (cryptoAsset.endsWith('VES')) networkTag = cryptoAsset.replace('VES', '');
-    else if (cryptoAsset.startsWith('USDT') && cryptoAsset !== 'USDTUSDT') networkTag = 'USDT';
-    else if (cryptoAsset.endsWith('USDT')) networkTag = cryptoAsset.replace('USDT', '');
-    
-    if (cryptoAsset.startsWith('USDT') && cryptoAsset !== 'USDTUSDT') {
-      capitalTag = cryptoAsset.replace('USDT', '');
-    } else if (cryptoAsset === 'EURUSDT') {
-      capitalTag = 'EUR';
-    } else if (cryptoAsset === 'BTCVES') {
-      capitalTag = 'VES';
-    }
-    
-    return { networkTag, capitalTag };
-  };
-
-  const { networkTag, capitalTag } = getCurrencyTags();
-
-  const handleExchangeChange = (e: React.ChangeEvent<HTMLSelectElement>, isSource: boolean) => {
-    if (isSource) setExchangeSource(e.target.value);
-    else setExchangeTarget(e.target.value);
-    setBuyPrice('');
-    setSellPrice('');
-  };
-
-  const fetchLivePrice = async (type: 'compra' | 'venta') => {
-    const isCompra = type === 'compra';
-    const exchange = isCompra ? exchangeSource : exchangeTarget;
-    const setStatus = isCompra ? setLiveStatusBuy : setLiveStatusSell;
-    
-    setStatus('⏳ Buscando...');
-    
-    if (cryptoAsset === 'USDTUSDT') {
-      if (isCompra) setBuyPrice('1.00');
-      else setSellPrice('1.00');
-      setStatus('✅ Listo');
-      setTimeout(() => setStatus(''), 1000);
-      return;
-    }
-    
-    if (cryptoAsset === 'BTCVES') {
-      if (isCompra) setBuyPrice('3500000.00');
-      else setSellPrice('3520000.00');
-      setStatus('💡 P2P Base');
-      setTimeout(() => setStatus(''), 1500);
-      return;
-    }
-
-    const fetchDirect = async () => {
-      let url = '';
-      let sym = cryptoAsset;
-      let dec = 4;
-      
-      switch (exchange) {
-        case 'binance':
-          url = `https://api.binance.com/api/v3/ticker/bookTicker?symbol=${sym}`;
-          const resBin = await fetch(url).then(r => r.json());
-          return parseFloat(isCompra ? resBin.askPrice : resBin.bidPrice);
-          
-        case 'bybit':
-          url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${sym}`;
-          const resByb = await fetch(url).then(r => r.json());
-          return parseFloat(isCompra ? resByb.result.list[0].ask1Price : resByb.result.list[0].bid1Price);
-          
-        case 'mexc':
-          url = `https://api.mexc.com/api/v3/ticker/bookTicker?symbol=${sym}`;
-          const resMexc = await fetch(url).then(r => r.json());
-          return parseFloat(isCompra ? resMexc.askPrice : resMexc.bidPrice);
-          
-        case 'kucoin':
-          const kSym = sym.replace('USDT', '-USDT').replace('BTC', '-BTC');
-          url = `https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kSym}`;
-          const resKuc = await fetch(url).then(r => r.json());
-          return parseFloat(isCompra ? resKuc.data.bestAsk : resKuc.data.bestBid);
-          
-        case 'okx':
-          const oSym = sym.replace('USDT', '-USDT').replace('BTC', '-BTC');
-          url = `https://www.okx.com/api/v5/market/ticker?instId=${oSym}`;
-          const resOkx = await fetch(url).then(r => r.json());
-          return parseFloat(isCompra ? resOkx.data[0].askPx : resOkx.data[0].bidPx);
-          
-        case 'bitget':
-          url = `https://api.bitget.com/api/v2/spot/market/tickers?symbol=${sym}`;
-          const resBit = await fetch(url).then(r => r.json());
-          return parseFloat(isCompra ? resBit.data[0].askPr : resBit.data[0].bidPr);
-          
-        case 'gateio':
-          const gSym = sym.replace('USDT', '_USDT').replace('BTC', '_BTC');
-          url = `https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${gSym}`;
-          const resGate = await fetch(url).then(r => r.json());
-          return parseFloat(isCompra ? resGate[0].lowest_ask : resGate[0].highest_bid);
-          
-        case 'kraken':
-          let krSym = sym;
-          if (sym === 'BTCUSDT') krSym = 'XBTUSDT';
-          url = `https://api.kraken.com/0/public/Ticker?pair=${krSym}`;
-          const resKr = await fetch(url).then(r => r.json());
-          const pairKey = Object.keys(resKr.result)[0];
-          return parseFloat(isCompra ? resKr.result[pairKey].a[0] : resKr.result[pairKey].b[0]);
-          
-        default:
-          throw new Error('Exchange no soportado en modo directo');
-      }
-    };
-
-    try {
-      let price;
-      try {
-        price = await fetchDirect();
-      } catch (e) {
-        setStatus('🔄 Falló, conectando vía servidor...');
-        // Fallback al servidor Vercel si falla el frontend (ej. por CORS)
-        const res = await fetch(`/api/crypto?exchange=${exchange}&symbol=${cryptoAsset}&type=${type}`);
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-        price = data.price;
-      }
-      
-      if (price && !isNaN(price)) {
-        let dec = parseFloat(price) > 500 ? 2 : (parseFloat(price) > 1 ? 4 : 6);
-        if (cryptoAsset.includes('ARS') || cryptoAsset.includes('COP') || cryptoAsset.includes('CLP')) dec = 2;
-        
-        const finalPrice = parseFloat(price).toFixed(dec);
-        if (isCompra) setBuyPrice(finalPrice);
-        else setSellPrice(finalPrice);
-        
-        setStatus('✅ Listo');
-        setTimeout(() => setStatus(''), 1200);
-      } else {
-        throw new Error('Precio inválido');
-      }
-    } catch (err: any) {
-      console.error(err);
-      setStatus(`⚠️ ${exchange} bloqueado en tu región.`);
-      setTimeout(() => setStatus(''), 4000);
-    }
-  };
-
-  const calculateArbitrage = async () => {
+  const calculateP2P = async () => {
     const bPrice = parseFloat(buyPrice);
     if (isNaN(capital) || capital <= 0 || isNaN(bPrice) || bPrice <= 0) {
       alert('⚠️ Por favor ingrese valores numéricos válidos.');
       return;
     }
 
-    const capitalTrasCompra = capital * (1 - (buyFee / 100));
-    let totalTokensAdquiridos = capitalTrasCompra / bPrice;
-    
-    if (networkFee > 0) {
-      totalTokensAdquiridos -= networkFee;
-      if (totalTokensAdquiridos <= 0) {
-        alert('🚨 La comisión de retiro de red supera los tokens comprados. Operación inviable.');
-        return;
-      }
-    }
+    const capitalTrasFeeCompra = capital * (1 - (buyFee / 100));
+    const cantidadMonedaLocal = capitalTrasFeeCompra * bPrice;
 
-    let precioDeVentaUtilizado = 0;
-    let capitalFinalBruto = 0;
-    let retornoNetoFinal = 0;
+    let retornoUSDT = 0;
     let spreadNetoPorcentaje = 0;
 
     if (calcStrategy === 'manual') {
-      precioDeVentaUtilizado = parseFloat(sellPrice);
-      if (isNaN(precioDeVentaUtilizado) || precioDeVentaUtilizado <= 0) {
+      const sPrice = parseFloat(sellPrice);
+      if (isNaN(sPrice) || sPrice <= 0) {
         alert('⚠️ Por favor ingrese un Precio de Venta válido.');
         return;
       }
-      capitalFinalBruto = totalTokensAdquiridos * precioDeVentaUtilizado;
-      retornoNetoFinal = capitalFinalBruto * (1 - (sellFee / 100));
-      spreadNetoPorcentaje = ((retornoNetoFinal - capital) / capital) * 100;
+      const retornoBruto = cantidadMonedaLocal / sPrice;
+      retornoUSDT = retornoBruto * (1 - (sellFee / 100));
+      spreadNetoPorcentaje = ((retornoUSDT - capital) / capital) * 100;
     } else {
       if (isNaN(targetMargin)) {
         alert('⚠️ Ingrese un porcentaje de margen objetivo válido.');
         return;
       }
-      retornoNetoFinal = capital * (1 + (targetMargin / 100));
-      capitalFinalBruto = retornoNetoFinal / (1 - (sellFee / 100));
-      precioDeVentaUtilizado = capitalFinalBruto / totalTokensAdquiridos;
+      retornoUSDT = capital * (1 + (targetMargin / 100));
+      const retornoBrutoNecesario = retornoUSDT / (1 - (sellFee / 100));
+      const precioVentaSugerido = cantidadMonedaLocal / retornoBrutoNecesario;
+      setSellPrice(precioVentaSugerido.toFixed(2));
       spreadNetoPorcentaje = targetMargin;
     }
-    
-    let decPrecio = bPrice > 500 ? 2 : 4;
-    if (cryptoAsset.includes('ARS') || cryptoAsset.includes('COP') || cryptoAsset.includes('VES')) decPrecio = 2;
 
-    const monDestino = cryptoAsset.endsWith('USDT') ? 'USDT' : cryptoAsset.replace('USDT', '').replace('BTC', '');
-    
+    const gananciaUSDT = retornoUSDT - capital;
+
     const resPayload = {
-      monDestino,
-      precioDeVentaUtilizado: precioDeVentaUtilizado.toFixed(decPrecio),
-      capitalFinalBruto: capitalFinalBruto.toFixed(2),
-      retornoNetoFinal: retornoNetoFinal.toFixed(2),
+      monedaLocal: pairInfo.currency,
+      cantidadMonedaLocal: cantidadMonedaLocal.toFixed(2),
+      retornoUSDT: retornoUSDT.toFixed(2),
+      gananciaUSDT: gananciaUSDT.toFixed(2),
       spreadNetoPorcentaje: spreadNetoPorcentaje.toFixed(2),
       isPositive: spreadNetoPorcentaje >= 0,
-      isHighlyProfitable: spreadNetoPorcentaje >= 0.5
+      isHighlyProfitable: spreadNetoPorcentaje >= 0.5,
+      precioVenta: calcStrategy === 'manual' ? sellPrice : (cantidadMonedaLocal / (retornoUSDT / (1 - (sellFee / 100)))).toFixed(2),
     };
-    
+
     setResult(resPayload);
 
-    // Save history to Supabase
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       await supabase.from('operation_history').insert([{
         user_id: session.user.id,
         fecha: new Date().toLocaleString(),
-        estrategia: `${cryptoAsset} (${exchangeSource.toUpperCase()} ➔ ${exchangeTarget.toUpperCase()})`,
-        capital: `${capitalTag} ${capital.toFixed(2)}`,
-        compra: bPrice.toFixed(decPrecio),
-        venta: resPayload.precioDeVentaUtilizado,
-        neto: `${monDestino} ${resPayload.retornoNetoFinal}`,
+        estrategia: `P2P ${pairInfo.currency} (${METHOD_LABELS[buyMethod]} ➔ ${METHOD_LABELS[sellMethod]})`,
+        capital: `USDT ${capital.toFixed(2)}`,
+        compra: bPrice.toFixed(2),
+        venta: resPayload.precioVenta,
+        neto: `USDT ${resPayload.retornoUSDT}`,
         spread: resPayload.spreadNetoPorcentaje
       }]);
     }
@@ -293,17 +175,18 @@ export default function Dashboard() {
 
   return (
     <div className="standard-calc">
-      <div className="calc-panel-box" onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') calculateArbitrage(); }}>
+      <div className="calc-panel-box" onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') calculateP2P(); }}>
         <div className="panel-title-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div><span>📥</span> Calculadora Pro (Spot / Fiat)</div>
+          <div><span>🌍</span> Calculadora P2P (Moneda Local)</div>
           <button className="btn-save-route" onClick={saveRoute} type="button">⭐ Guardar Ruta</button>
         </div>
-        
-        <div style={{ backgroundColor: 'rgba(30, 144, 255, 0.1)', borderLeft: '4px solid #1E90FF', padding: '12px', margin: '15px 0', borderRadius: '4px', fontSize: '13px', color: 'var(--text-muted)' }}>
-          <strong>💡 ¿Cómo usar esta calculadora?</strong><br/>
-          Esta herramienta calcula arbitraje cruzado avanzado. Si operas <strong>Spot</strong>, incluye las comisiones de red por transferir monedas entre exchanges. Si operas <strong>Fiat (P2P)</strong>, puedes establecer comisiones de red en 0 si mueves el dinero por transferencias bancarias locales.
+
+        <div style={{ backgroundColor: 'rgba(0, 173, 181, 0.08)', borderLeft: '4px solid #00ADB5', padding: '12px', margin: '15px 0', borderRadius: '4px', fontSize: '13px', color: 'var(--text-muted)' }}>
+          <strong>💡 ¿Cómo funciona?</strong><br/>
+          Simula la compra de moneda local (Bolívares, Pesos, etc.) usando USDT en una plataforma P2P, y luego la reventa en otra plataforma a un precio mayor. La diferencia entre el precio de compra y venta es tu ganancia.
+          <br/><strong>Ejemplo:</strong> Compras USDT a 39.50 Bs en Binance P2P, y vendes a 40.00 Bs en Zinli. Ganancia: +1.27%.
         </div>
-        
+
         {savedRoutes.length > 0 && (
           <div className="saved-routes-container">
             <span className="saved-routes-label">Rutas Rápidas Guardadas:</span>
@@ -311,7 +194,7 @@ export default function Dashboard() {
               {savedRoutes.map((route, i) => (
                 <div key={i} className="saved-route-chip">
                   <span onClick={() => loadRoute(route)}>
-                    {route.asset.replace('USDT', '')}: {route.source.toUpperCase()} ➔ {route.target.toUpperCase()}
+                    {route.pair.replace('USDT', '')}: {METHOD_LABELS[route.buyMethod]} ➔ {METHOD_LABELS[route.sellMethod]}
                   </span>
                   <button type="button" className="del-route-btn" onClick={() => deleteRoute(i)} title="Eliminar ruta">×</button>
                 </div>
@@ -326,63 +209,29 @@ export default function Dashboard() {
         </div>
 
         <div className="input-group">
-          <label>Activo Cripto a Evaluar</label>
-          <select value={cryptoAsset} onChange={(e) => setCryptoAsset(e.target.value)}>
-            <optgroup label="💵 MERCADO SPOT GLOBAL">
-              <option value="BTCUSDT">Bitcoin (BTC / USDT)</option>
-              <option value="ETHUSDT">Ethereum (ETH / USDT)</option>
-              <option value="SOLUSDT">Solana (SOL / USDT)</option>
-              <option value="BNBUSDT">Binance Coin (BNB / USDT)</option>
-              <option value="XRPUSDT">Ripple (XRP / USDT)</option>
-              <option value="ADAUSDT">Cardano (ADA / USDT)</option>
-              <option value="AVAXUSDT">Avalanche (AVAX / USDT)</option>
-              <option value="DOTUSDT">Polkadot (DOT / USDT)</option>
-              <option value="LINKUSDT">Chainlink (LINK / USDT)</option>
-              <option value="MATICUSDT">Polygon (MATIC / USDT)</option>
-              <option value="LTCUSDT">Litecoin (LTC / USDT)</option>
-            </optgroup>
-            <optgroup label="🇪🇺 EURO & LATAM MERCADOS FIAT">
-              <option value="EURUSDT">Euro de la UE (EUR / USDT)</option>
-              <option value="BTCVES">Bolívar Venezolano (BTC / VES)*</option>
-              <option value="USDTARS">Peso Argentino (USDT / ARS)</option>
-              <option value="USDTCOP">Peso Colombiano (USDT / COP)</option>
-              <option value="USDTMXN">Peso Mexicano (USDT / MXN)</option>
-              <option value="USDTBRL">Real Brasileño (USDT / BRL)</option>
-              <option value="USDTPEN">Sol Peruano (USDT / PEN)</option>
-              <option value="USDTCLP">Peso Chileno (USDT / CLP)</option>
-            </optgroup>
-            <optgroup label="🔄 ESTABILIDAD INTER-EXCHANGE">
-              <option value="USDTUSDT">Estabilidad Arbitraje Directo (USDT / USDT)</option>
-              <option value="USDCUSDT">USD Coin / Tether (USDC / USDT)</option>
-            </optgroup>
+          <label>Par de Moneda Local</label>
+          <select value={selectedPair} onChange={(e) => { setSelectedPair(e.target.value); setBuyPrice(''); setSellPrice(''); setResult(null); }}>
+            {P2P_PAIRS.map(p => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
           </select>
         </div>
 
         <div className="input-grid-2">
           <div className="input-group">
-            <label>Exchange A (Compra / Origen)</label>
-            <select value={exchangeSource} onChange={(e) => handleExchangeChange(e, true)}>
-              <option value="binance">Binance</option>
-              <option value="bybit">Bybit</option>
-              <option value="okx">OKX</option>
-              <option value="bitget">Bitget</option>
-              <option value="gateio">Gate.io</option>
-              <option value="kucoin">KuCoin</option>
-              <option value="kraken">Kraken</option>
-              <option value="mexc">MEXC</option>
+            <label>Plataforma de Compra</label>
+            <select value={buyMethod} onChange={(e) => setBuyMethod(e.target.value)}>
+              {BUY_METHODS.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
             </select>
           </div>
           <div className="input-group">
-            <label>Exchange B (Venta / Destino)</label>
-            <select value={exchangeTarget} onChange={(e) => handleExchangeChange(e, false)}>
-              <option value="bybit">Bybit</option>
-              <option value="binance">Binance</option>
-              <option value="okx">OKX</option>
-              <option value="bitget">Bitget</option>
-              <option value="gateio">Gate.io</option>
-              <option value="kucoin">KuCoin</option>
-              <option value="kraken">Kraken</option>
-              <option value="mexc">MEXC</option>
+            <label>Plataforma de Venta</label>
+            <select value={sellMethod} onChange={(e) => setSellMethod(e.target.value)}>
+              {SELL_METHODS.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -390,25 +239,25 @@ export default function Dashboard() {
         <div className="input-group">
           <label>Capital de Trabajo</label>
           <div className="input-group-wrapper">
-            <input type="number" placeholder="0.00" step="any" value={capital} onChange={(e) => setCapital(parseFloat(e.target.value))} />
-            <span className="currency-tag">{capitalTag}</span>
+            <input type="number" placeholder="100" step="any" value={capital} onChange={(e) => setCapital(parseFloat(e.target.value))} />
+            <span className="currency-tag">USDT</span>
           </div>
         </div>
 
         <div className="input-grid-2">
           <div className="input-group">
             <label>
-              Precio Compra (A) 
-              <span className="live-api-btn" onClick={() => fetchLivePrice('compra')}>
-                {liveStatusBuy || '🔄 En vivo'}
-              </span>
+              Precio Compra ({pairInfo.currency} por 1 USDT)
             </label>
-            <input type="number" placeholder="0.00" step="any" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} />
+            <div className="input-group-wrapper">
+              <input type="number" placeholder="Ej: 39.50" step="any" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} />
+              <span className="currency-tag">{pairInfo.currency}</span>
+            </div>
           </div>
           <div className="input-group">
-            <label>Comisión Compra (A)</label>
+            <label>Comisión Plataforma Compra</label>
             <div className="input-group-wrapper">
-              <input type="number" placeholder="0.1" step="any" value={buyFee} onChange={(e) => setBuyFee(parseFloat(e.target.value))} />
+              <input type="number" placeholder="0" step="any" value={buyFee} onChange={(e) => setBuyFee(parseFloat(e.target.value))} />
               <span className="currency-tag">%</span>
             </div>
           </div>
@@ -418,61 +267,65 @@ export default function Dashboard() {
           {calcStrategy === 'manual' ? (
             <div className="input-group">
               <label>
-                Precio Venta (B) 
-                <span className="live-api-btn" onClick={() => fetchLivePrice('venta')}>
-                  {liveStatusSell || '🔄 En vivo'}
-                </span>
+                Precio Venta ({pairInfo.currency} por 1 USDT)
               </label>
-              <input type="number" placeholder="0.00" step="any" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
+              <div className="input-group-wrapper">
+                <input type="number" placeholder="Ej: 40.00" step="any" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
+                <span className="currency-tag">{pairInfo.currency}</span>
+              </div>
             </div>
           ) : (
             <div className="input-group">
               <label>Margen Objetivo Deseado</label>
               <div className="input-group-wrapper">
-                <input type="number" placeholder="1.5" step="any" value={targetMargin} onChange={(e) => setTargetMargin(parseFloat(e.target.value))} />
+                <input type="number" placeholder="2.0" step="any" value={targetMargin} onChange={(e) => setTargetMargin(parseFloat(e.target.value))} />
                 <span className="currency-tag">%</span>
               </div>
             </div>
           )}
           <div className="input-group">
-            <label>Comisión Venta (B)</label>
+            <label>Comisión Plataforma Venta</label>
             <div className="input-group-wrapper">
-              <input type="number" placeholder="0.1" step="any" value={sellFee} onChange={(e) => setSellFee(parseFloat(e.target.value))} />
+              <input type="number" placeholder="0" step="any" value={sellFee} onChange={(e) => setSellFee(parseFloat(e.target.value))} />
               <span className="currency-tag">%</span>
             </div>
           </div>
         </div>
 
-        <div className="input-group">
-          <label>Comisión de Retiro/Red (Monto Fijo entre A y B)</label>
-          <div className="input-group-wrapper">
-            <input type="number" placeholder="0.00" step="any" value={networkFee} onChange={(e) => setNetworkFee(parseFloat(e.target.value))} />
-            <span className="currency-tag">{networkTag}</span>
-          </div>
-        </div>
-
-        <button className="btn-primary" onClick={calculateArbitrage}>Ejecutar Simulación Matemática</button>
+        <button className="btn-primary" onClick={calculateP2P}>Calcular Ganancia P2P</button>
       </div>
 
       <div className="calc-panel-box">
         <div className="panel-title-bar"><span>📊</span> Desglose de Retorno Estimado</div>
         <div className="results-list-box">
           <div className="result-row-item">
-            <span className="label-text">{calcStrategy === 'manual' ? 'Precio de Venta Requerido' : 'Precio de Venta Sugerido'}</span>
+            <span className="label-text">Capital Invertido</span>
             <span className="value-num" style={{ color: '#fff' }}>
-              {result ? `${result.monDestino} ${result.precioDeVentaUtilizado}` : '0.00'}
+              USDT {capital ? capital.toFixed(2) : '0.00'}
             </span>
           </div>
           <div className="result-row-item">
-            <span className="label-text">Retorno Bruto en Operación</span>
+            <span className="label-text">Moneda Local Obtenida</span>
             <span className="value-num" style={{ color: '#fff' }}>
-              {result ? `${result.monDestino} ${result.capitalFinalBruto}` : '0.00'}
+              {result ? `${result.monedaLocal} ${result.cantidadMonedaLocal}` : `${pairInfo.currency} 0.00`}
+            </span>
+          </div>
+          <div className="result-row-item">
+            <span className="label-text">Precio de Venta Utilizado</span>
+            <span className="value-num" style={{ color: '#fff' }}>
+              {result ? `${result.monedaLocal} ${result.precioVenta}` : '0.00'}
             </span>
           </div>
           <div className="result-row-item highlight-box">
-            <span className="label-text" style={{ color: 'var(--primary)', fontWeight: 700 }}>Retorno Neto Capitalizado</span>
+            <span className="label-text" style={{ color: 'var(--primary)', fontWeight: 700 }}>Retorno Neto en USDT</span>
             <span className="value-num">
-              {result ? `${result.monDestino} ${result.retornoNetoFinal}` : '0.00'}
+              {result ? `USDT ${result.retornoUSDT}` : 'USDT 0.00'}
+            </span>
+          </div>
+          <div className="result-row-item">
+            <span className="label-text">Ganancia / Pérdida</span>
+            <span className="value-num" style={{ color: result ? (result.isPositive ? 'var(--success)' : 'var(--danger)') : 'var(--success)', fontWeight: 700 }}>
+              {result ? `${parseFloat(result.gananciaUSDT) >= 0 ? '+' : ''}${result.gananciaUSDT} USDT` : '+0.00 USDT'}
             </span>
           </div>
           <div className="result-row-item">
@@ -494,11 +347,11 @@ export default function Dashboard() {
               {result.isHighlyProfitable ? '🚀' : (result.isPositive ? '⚠️' : '🚨')}
             </span>
             <span>
-              {result.isHighlyProfitable 
-                ? `Oportunidad rentable detectada (${result.spreadNetoPorcentaje}%). Ruta viable.`
-                : (result.isPositive 
-                  ? `Spread muy bajo o nulo (${result.spreadNetoPorcentaje}%). Ojo con la volatilidad.`
-                  : `Operación inviable. Pérdida del ${Math.abs(parseFloat(result.spreadNetoPorcentaje)).toFixed(2)}%.`)}
+              {result.isHighlyProfitable
+                ? `Oportunidad rentable detectada (${result.spreadNetoPorcentaje}%). ¡Ejecuta esta ruta P2P!`
+                : (result.isPositive
+                  ? `Spread muy bajo (${result.spreadNetoPorcentaje}%). Verifica los precios antes de operar.`
+                  : `Operación inviable. Pérdida del ${Math.abs(parseFloat(result.spreadNetoPorcentaje)).toFixed(2)}%. Busca mejores precios.`)}
             </span>
           </div>
         )}
@@ -509,56 +362,50 @@ export default function Dashboard() {
               const canvas = document.createElement('canvas');
               const ctx = canvas.getContext('2d');
               if (!ctx) return;
-              
+
               canvas.width = 600;
-              canvas.height = 400;
+              canvas.height = 420;
 
               const drawAndShare = (logoLoaded: boolean, logoImg: HTMLImageElement) => {
-                // Background gradient
-                const bg = ctx.createLinearGradient(0, 0, 600, 400);
+                const bg = ctx.createLinearGradient(0, 0, 600, 420);
                 bg.addColorStop(0, '#0a0a1a');
                 bg.addColorStop(1, '#111827');
                 ctx.fillStyle = bg;
-                ctx.fillRect(0, 0, 600, 400);
-                
-                // Border accent
+                ctx.fillRect(0, 0, 600, 420);
+
                 ctx.strokeStyle = '#00ADB5';
                 ctx.lineWidth = 2;
-                ctx.strokeRect(1, 1, 598, 398);
-                
-                // Header with Logo
+                ctx.strokeRect(1, 1, 598, 418);
+
                 if (logoLoaded) {
                   ctx.drawImage(logoImg, 30, 20, 32, 32);
                   ctx.fillStyle = '#00ADB5';
                   ctx.font = 'bold 22px Inter, Arial, sans-serif';
-                  ctx.fillText('📊 CriptoCal — Resultado', 75, 45);
+                  ctx.fillText('CriptoCal — Arbitraje P2P', 75, 45);
                 } else {
                   ctx.fillStyle = '#00ADB5';
                   ctx.font = 'bold 22px Inter, Arial, sans-serif';
-                  ctx.fillText('📊 CriptoCal — Resultado de Arbitraje', 30, 45);
+                  ctx.fillText('CriptoCal — Arbitraje P2P', 30, 45);
                 }
-                
-                // Divider
+
                 ctx.strokeStyle = 'rgba(0, 173, 181, 0.3)';
                 ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(30, 65); ctx.lineTo(570, 65); ctx.stroke();
-                
-                // Route info
+
                 ctx.fillStyle = '#9CA3AF';
                 ctx.font = '15px Inter, Arial, sans-serif';
-                ctx.fillText(`${cryptoAsset}  •  ${exchangeSource.toUpperCase()} ➔ ${exchangeTarget.toUpperCase()}`, 30, 95);
-                
-                // Helper to format numbers dynamically without trailing zeroes
+                ctx.fillText(`${pairInfo.currency}  |  ${METHOD_LABELS[buyMethod]} -> ${METHOD_LABELS[sellMethod]}`, 30, 95);
+
                 const formatNum = (val: string | number) => parseFloat(val.toString()).toString();
 
-                // Data rows
                 const rows = [
-                  ['Capital invertido', `${capitalTag} ${formatNum(capital)}`],
-                  ['Precio de Compra', `${result.monDestino} ${formatNum(buyPrice)}`],
-                  [calcStrategy === 'manual' ? 'Precio de Venta' : 'Precio Sugerido', `${result.monDestino} ${calcStrategy === 'manual' ? formatNum(sellPrice) : formatNum(result.precioDeVentaUtilizado)}`],
-                  ['Retorno Neto', `${result.monDestino} ${formatNum(result.retornoNetoFinal)}`],
+                  ['Capital invertido', `USDT ${formatNum(capital)}`],
+                  [`Precio Compra (${pairInfo.currency})`, `${pairInfo.currency} ${formatNum(buyPrice)}`],
+                  [`Precio Venta (${pairInfo.currency})`, `${pairInfo.currency} ${formatNum(result.precioVenta)}`],
+                  ['Moneda Local Obtenida', `${pairInfo.currency} ${formatNum(result.cantidadMonedaLocal)}`],
+                  ['Retorno Neto', `USDT ${formatNum(result.retornoUSDT)}`],
                 ];
-                
+
                 let y = 135;
                 rows.forEach(([label, value]) => {
                   ctx.fillStyle = '#6B7280';
@@ -569,40 +416,37 @@ export default function Dashboard() {
                   ctx.textAlign = 'right';
                   ctx.fillText(value, 570, y);
                   ctx.textAlign = 'left';
-                  y += 35;
+                  y += 32;
                 });
-                
-                // Spread highlight
+
                 ctx.fillStyle = 'rgba(0, 173, 181, 0.1)';
-                ctx.fillRect(20, y + 5, 560, 50);
+                ctx.fillRect(20, y + 10, 560, 50);
                 ctx.strokeStyle = 'rgba(0, 173, 181, 0.4)';
-                ctx.strokeRect(20, y + 5, 560, 50);
-                
+                ctx.strokeRect(20, y + 10, 560, 50);
+
                 ctx.fillStyle = '#00ADB5';
                 ctx.font = 'bold 16px Inter, Arial, sans-serif';
-                ctx.fillText('Spread Neto Final', 35, y + 36);
+                ctx.fillText('Ganancia Neta', 35, y + 41);
                 ctx.fillStyle = result.isPositive ? '#10B981' : '#EF4444';
                 ctx.font = 'bold 22px Inter, Arial, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText(`${formatNum(result.spreadNetoPorcentaje)}%`, 565, y + 38);
+                ctx.fillText(`${formatNum(result.gananciaUSDT)} USDT (${formatNum(result.spreadNetoPorcentaje)}%)`, 565, y + 43);
                 ctx.textAlign = 'left';
-                
-                // Footer
+
                 ctx.fillStyle = '#4B5563';
                 ctx.font = '12px Inter, Arial, sans-serif';
-                ctx.fillText('criptocal.vercel.app — Calculadora de Arbitraje Cripto Profesional', 30, 380);
-                ctx.fillText(new Date().toLocaleString('es-ES'), 430, 380);
-                
-                // Convert to blob and share/download
+                ctx.fillText('criptocal.vercel.app — Calculadora P2P', 30, 400);
+                ctx.fillText(new Date().toLocaleString('es-ES'), 430, 400);
+
                 canvas.toBlob(async (blob) => {
                   if (!blob) return;
-                  const file = new File([blob], 'criptocal-resultado.png', { type: 'image/png' });
-                  
+                  const file = new File([blob], 'criptocal-p2p.png', { type: 'image/png' });
+
                   if (navigator.share && navigator.canShare?.({ files: [file] })) {
                     try {
                       await navigator.share({
-                        title: 'CriptoCal — Resultado de Arbitraje',
-                        text: `Spread de ${formatNum(result.spreadNetoPorcentaje)}% encontrado en ${cryptoAsset} (${exchangeSource} ➔ ${exchangeTarget}). Calculado con criptocal.vercel.app`,
+                        title: 'CriptoCal — Resultado P2P',
+                        text: `Ganancia de ${formatNum(result.gananciaUSDT)} USDT (${formatNum(result.spreadNetoPorcentaje)}%) en ${pairInfo.currency}. Calculado con criptocal.vercel.app`,
                         files: [file],
                       });
                     } catch { /* user cancelled */ }
@@ -610,18 +454,17 @@ export default function Dashboard() {
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'criptocal-resultado.png';
+                    a.download = 'criptocal-p2p.png';
                     a.click();
                     URL.revokeObjectURL(url);
                   }
                 }, 'image/png');
               };
 
-              // Load logo before drawing
               const logoImg = new window.Image();
               logoImg.crossOrigin = 'Anonymous';
               let logoLoaded = false;
-              
+
               logoImg.onload = () => {
                 logoLoaded = true;
                 drawAndShare(logoLoaded, logoImg);

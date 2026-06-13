@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { supabase } from '../lib/supabase';
 import Dashboard from '../components/Dashboard';
 import SpreadScanner from '../components/SpreadScanner';
+import SpotCalculator from '../components/SpotCalculator';
 import HistoryTable from '../components/HistoryTable';
 import MathCalculator from '../components/MathCalculator';
 import ProfileSettings from '../components/ProfileSettings';
@@ -461,6 +462,7 @@ export default function Home() {
         <div id="spot-tab" className={`tab-content ${activeTab === 'spot' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             <SpreadScanner />
+            <SpotCalculator />
         </div>
 
         <div id="historial-tab" className={`tab-content ${activeTab === 'historial' ? 'active' : ''}`}>
