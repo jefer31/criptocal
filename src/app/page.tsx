@@ -194,7 +194,9 @@ export default function Home() {
     }
   };
 
-  const isFreeUser = user && !user.user_metadata?.is_premium;
+  // Un usuario es "gratis" si NO ha iniciado sesión, O si inició sesión pero no es PRO.
+  // Esto permite que el bot verificador de A-Ads (que no inicia sesión) vea el anuncio en la página.
+  const isFreeUser = !user || (user && !user.user_metadata?.is_premium);
 
   return (
     <>
