@@ -11,6 +11,7 @@ import ProfileSettings from '../components/ProfileSettings';
 import AlertConfig from '../components/AlertConfig';
 import AdBanner from '../components/AdBanner';
 import PricingModal from '../components/PricingModal';
+import VenezuelaRates from '../components/VenezuelaRates';
 
 export default function Home() {
   
@@ -445,6 +446,7 @@ export default function Home() {
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            <VenezuelaRates />
             <SpreadScanner />
             <Dashboard />
         </div>
