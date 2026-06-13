@@ -25,7 +25,7 @@ const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top', onUpgrade }) => 
       </div>
       
       {/* A-Ads Real Ad Unit */}
-      <div id="frame" style={{ width: '100%', maxWidth: '728px', margin: 'auto', zIndex: 99998, height: 'auto', overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+      <div id="frame" style={{ width: '100%', maxWidth: '728px', margin: 'auto', zIndex: 1, height: 'auto', overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
         <iframe 
           data-aa="2443965" 
           src="//ad.a-ads.com/2443965/?size=728x90"
