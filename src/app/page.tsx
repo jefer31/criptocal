@@ -9,6 +9,7 @@ import HistoryTable from '../components/HistoryTable';
 import MathCalculator from '../components/MathCalculator';
 import ProfileSettings from '../components/ProfileSettings';
 import AlertConfig from '../components/AlertConfig';
+import AdBanner from '../components/AdBanner';
 
 export default function Home() {
   
@@ -189,6 +190,8 @@ export default function Home() {
       setAuthError('✅ Revisa tu correo — te enviamos un enlace para restablecer tu contraseña.');
     }
   };
+
+  const isFreeUser = user && !user.user_metadata?.is_premium;
 
   return (
     <>
@@ -439,6 +442,7 @@ export default function Home() {
         )}
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
+            {isFreeUser && <AdBanner placement="top" />}
             <SpreadScanner />
             <Dashboard />
         </div>
@@ -448,6 +452,7 @@ export default function Home() {
         </div>
 
         <div id="matematica-tab" className={`tab-content ${activeTab === 'matematica' ? 'active' : ''}`}>
+            {isFreeUser && <AdBanner placement="top" />}
             <MathCalculator />
         </div>
 
