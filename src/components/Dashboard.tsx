@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import DynamicFiatRates from './DynamicFiatRates';
 
 interface SavedRoute {
   pair: string;
@@ -70,6 +71,9 @@ export default function Dashboard() {
   const [sellFee, setSellFee] = useState(0);
   const [targetMargin, setTargetMargin] = useState(2.0);
 
+  const [liveStatusBuy, setLiveStatusBuy] = useState('');
+  const [liveStatusSell, setLiveStatusSell] = useState('');
+
   const [result, setResult] = useState<any>(null);
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
 
@@ -107,6 +111,48 @@ export default function Dashboard() {
     updated.splice(index, 1);
     setSavedRoutes(updated);
     localStorage.setItem('criptocal_p2p_routes', JSON.stringify(updated));
+  };
+
+  const fetchLivePrice = async (type: 'compra' | 'venta') => {
+    const isCompra = type === 'compra';
+    const method = isCompra ? buyMethod : sellMethod;
+    const setStatus = isCompra ? setLiveStatusBuy : setLiveStatusSell;
+    
+    // In Binance P2P API, if user is BUYING USDT with Fiat, they are taking a SELL ad.
+    // If user is SELLING USDT for Fiat, they are taking a BUY ad.
+    const tradeType = isCompra ? 'SELL' : 'BUY';
+
+    setStatus('⏳ Buscando P2P...');
+
+    try {
+      const res = await fetch('/api/p2p', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fiat: pairInfo.currency,
+          tradeType: tradeType,
+          payType: method
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      if (data.price) {
+        if (isCompra) setBuyPrice(data.price);
+        else setSellPrice(data.price);
+
+        setStatus('✅ Listo');
+        setTimeout(() => setStatus(''), 1500);
+      } else {
+        throw new Error('Precio no encontrado');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setStatus('⚠️ Sin anuncios hoy');
+      setTimeout(() => setStatus(''), 3000);
+    }
   };
 
   const calculateP2P = async () => {
@@ -175,6 +221,7 @@ export default function Dashboard() {
 
   return (
     <div className="standard-calc">
+      <DynamicFiatRates fiatCurrency={pairInfo.currency} />
       <div className="calc-panel-box" onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') calculateP2P(); }}>
         <div className="panel-title-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div><span>🌍</span> Calculadora P2P (Moneda Local)</div>
@@ -248,6 +295,9 @@ export default function Dashboard() {
           <div className="input-group">
             <label>
               Precio Compra ({pairInfo.currency} por 1 USDT)
+              <span className="live-api-btn" onClick={() => fetchLivePrice('compra')}>
+                {liveStatusBuy || '🔄 En vivo (Binance)'}
+              </span>
             </label>
             <div className="input-group-wrapper">
               <input type="number" placeholder="Ej: 39.50" step="any" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} />
@@ -268,6 +318,9 @@ export default function Dashboard() {
             <div className="input-group">
               <label>
                 Precio Venta ({pairInfo.currency} por 1 USDT)
+                <span className="live-api-btn" onClick={() => fetchLivePrice('venta')}>
+                  {liveStatusSell || '🔄 En vivo (Binance)'}
+                </span>
               </label>
               <div className="input-group-wrapper">
                 <input type="number" placeholder="Ej: 40.00" step="any" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />

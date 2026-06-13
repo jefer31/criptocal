@@ -455,7 +455,6 @@ export default function Home() {
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
-            <VenezuelaRates />
             <Dashboard />
         </div>
 
