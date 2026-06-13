@@ -5,7 +5,9 @@ import DynamicFiatRates from './DynamicFiatRates';
 
 interface SavedRoute {
   pair: string;
+  buyExchange: string;
   buyMethod: string;
+  sellExchange: string;
   sellMethod: string;
 }
 
@@ -25,43 +27,46 @@ const P2P_PAIRS = [
   { value: 'USDTDOP', label: '🇩🇴 Peso Dominicano (USDT → DOP)', currency: 'DOP', capital: 'USDT' },
 ];
 
-const BUY_METHODS = [
+const EXCHANGES = [
   { value: 'binance_p2p', label: 'Binance P2P' },
   { value: 'bybit_p2p', label: 'Bybit P2P' },
   { value: 'eldorado', label: 'El Dorado' },
   { value: 'airtm', label: 'AirTM' },
-  { value: 'reserve', label: 'Reserve' },
   { value: 'localbitcoins', label: 'LocalBitcoins' },
   { value: 'paxful', label: 'Paxful' },
-  { value: 'efectivo', label: 'Efectivo / Casa de Cambio' },
-  { value: 'otro', label: 'Otro (Manual)' },
+  { value: 'otro', label: 'Otro (Manual)' }
 ];
 
-const SELL_METHODS = [
-  { value: 'binance_p2p', label: 'Binance P2P' },
-  { value: 'bybit_p2p', label: 'Bybit P2P' },
-  { value: 'eldorado', label: 'El Dorado' },
-  { value: 'airtm', label: 'AirTM' },
-  { value: 'reserve', label: 'Reserve' },
-  { value: 'zinli', label: 'Zinli', currencies: ['USD', 'PAB'] },
+const PAYMENT_METHODS = [
   { value: 'pago_movil', label: 'Pago Móvil', currencies: ['VES'] },
+  { value: 'banesco', label: 'Banesco', currencies: ['VES'] },
+  { value: 'mercantil', label: 'Mercantil', currencies: ['VES'] },
+  { value: 'provincial', label: 'Provincial', currencies: ['VES'] },
+  { value: 'zinli', label: 'Zinli', currencies: ['USD', 'PAB'] },
   { value: 'zelle', label: 'Zelle', currencies: ['USD'] },
   { value: 'nequi', label: 'Nequi', currencies: ['COP'] },
+  { value: 'bancolombia', label: 'Bancolombia', currencies: ['COP'] },
   { value: 'mercadopago', label: 'MercadoPago', currencies: ['ARS', 'MXN', 'BRL'] },
   { value: 'paypal', label: 'PayPal', currencies: ['USD', 'EUR'] },
   { value: 'wise', label: 'Wise', currencies: ['USD', 'EUR', 'GBP'] },
-  { value: 'efectivo', label: 'Efectivo / Casa de Cambio' },
-  { value: 'otro', label: 'Otro (Manual)' },
+  { value: 'reserve', label: 'Reserve' },
+  { value: 'efectivo', label: 'Efectivo / Físico' },
+  { value: 'banco_nacional', label: 'Transferencia Bancaria Nacional' }
 ];
 
+const EXCHANGE_LABELS: Record<string, string> = {};
+EXCHANGES.forEach(m => { EXCHANGE_LABELS[m.value] = m.label; });
+
 const METHOD_LABELS: Record<string, string> = {};
-[...BUY_METHODS, ...SELL_METHODS].forEach(m => { METHOD_LABELS[m.value] = m.label; });
+PAYMENT_METHODS.forEach(m => { METHOD_LABELS[m.value] = m.label; });
 
 export default function Dashboard() {
   const [calcStrategy, setCalcStrategy] = useState<'manual' | 'objetivo'>('manual');
   const [selectedPair, setSelectedPair] = useState('USDTVES');
-  const [buyMethod, setBuyMethod] = useState('binance_p2p');
-  const [sellMethod, setSellMethod] = useState('zinli');
+  const [buyExchange, setBuyExchange] = useState('binance_p2p');
+  const [buyMethod, setBuyMethod] = useState('pago_movil');
+  const [sellExchange, setSellExchange] = useState('binance_p2p');
+  const [sellMethod, setSellMethod] = useState('pago_movil');
   const [capital, setCapital] = useState(100);
 
   const [buyPrice, setBuyPrice] = useState('');
@@ -87,8 +92,8 @@ export default function Dashboard() {
   }, []);
 
   const saveRoute = () => {
-    const newRoute = { pair: selectedPair, buyMethod, sellMethod };
-    if (savedRoutes.some(r => r.pair === newRoute.pair && r.buyMethod === newRoute.buyMethod && r.sellMethod === newRoute.sellMethod)) {
+    const newRoute = { pair: selectedPair, buyExchange, buyMethod, sellExchange, sellMethod };
+    if (savedRoutes.some(r => r.pair === newRoute.pair && r.buyExchange === newRoute.buyExchange && r.buyMethod === newRoute.buyMethod && r.sellExchange === newRoute.sellExchange && r.sellMethod === newRoute.sellMethod)) {
       alert('Esta ruta ya está guardada en tus favoritos.');
       return;
     }
@@ -99,7 +104,9 @@ export default function Dashboard() {
 
   const loadRoute = (route: SavedRoute) => {
     setSelectedPair(route.pair);
+    setBuyExchange(route.buyExchange || 'binance_p2p');
     setBuyMethod(route.buyMethod);
+    setSellExchange(route.sellExchange || 'binance_p2p');
     setSellMethod(route.sellMethod);
     setBuyPrice('');
     setSellPrice('');
@@ -116,8 +123,14 @@ export default function Dashboard() {
   const fetchLivePrice = async (type: 'compra' | 'venta') => {
     const isCompra = type === 'compra';
     const method = isCompra ? buyMethod : sellMethod;
+    const exchange = isCompra ? buyExchange : sellExchange;
     const setStatus = isCompra ? setLiveStatusBuy : setLiveStatusSell;
     
+    if (exchange !== 'binance_p2p') {
+      alert('Los precios en vivo solo están disponibles para Binance P2P por ahora.');
+      return;
+    }
+
     // In Binance P2P API, if user is BUYING USDT with Fiat, they are taking a SELL ad.
     // If user is SELLING USDT for Fiat, they are taking a BUY ad.
     const tradeType = isCompra ? 'SELL' : 'BUY';
@@ -209,7 +222,7 @@ export default function Dashboard() {
       await supabase.from('operation_history').insert([{
         user_id: session.user.id,
         fecha: new Date().toLocaleString(),
-        estrategia: `P2P ${pairInfo.currency} (${METHOD_LABELS[buyMethod]} ➔ ${METHOD_LABELS[sellMethod]})`,
+        estrategia: `P2P ${pairInfo.currency} (${EXCHANGE_LABELS[buyExchange]} ${METHOD_LABELS[buyMethod]} ➔ ${EXCHANGE_LABELS[sellExchange]} ${METHOD_LABELS[sellMethod]})`,
         capital: `USDT ${capital.toFixed(2)}`,
         compra: bPrice.toFixed(2),
         venta: resPayload.precioVenta,
@@ -219,9 +232,8 @@ export default function Dashboard() {
     }
   };
 
-  const supportedBinanceMethods = ['binance_p2p', 'zinli', 'pago_movil', 'zelle', 'nequi'];
-  const showBuyLive = supportedBinanceMethods.includes(buyMethod);
-  const showSellLive = supportedBinanceMethods.includes(sellMethod);
+  const showBuyLive = buyExchange === 'binance_p2p';
+  const showSellLive = sellExchange === 'binance_p2p';
 
   return (
     <div className="standard-calc">
@@ -235,7 +247,7 @@ export default function Dashboard() {
         <div style={{ backgroundColor: 'rgba(0, 173, 181, 0.08)', borderLeft: '4px solid #00ADB5', padding: '12px', margin: '15px 0', borderRadius: '4px', fontSize: '13px', color: 'var(--text-muted)' }}>
           <strong>💡 ¿Cómo funciona?</strong><br/>
           Simula la compra de moneda local (Bolívares, Pesos, etc.) usando USDT en una plataforma P2P, y luego la reventa en otra plataforma a un precio mayor. La diferencia entre el precio de compra y venta es tu ganancia.
-          <br/><strong>Ejemplo:</strong> Compras USDT a 39.50 Bs en Binance P2P, y vendes a 40.00 Bs en Zinli. Ganancia: +1.27%.
+          <strong>Ejemplo:</strong> Compras USDT a 39.50 Bs en El Dorado (usando Pago Móvil), y vendes a 40.00 Bs en Binance P2P (usando Pago Móvil). Ganancia: +1.27%.
         </div>
 
         {savedRoutes.length > 0 && (
@@ -245,7 +257,7 @@ export default function Dashboard() {
               {savedRoutes.map((route, i) => (
                 <div key={i} className="saved-route-chip">
                   <span onClick={() => loadRoute(route)}>
-                    {route.pair.replace('USDT', '')}: {METHOD_LABELS[route.buyMethod]} ➔ {METHOD_LABELS[route.sellMethod]}
+                    {route.pair.replace('USDT', '')}: {EXCHANGE_LABELS[route.buyExchange] || 'Binance'} ({METHOD_LABELS[route.buyMethod]}) ➔ {EXCHANGE_LABELS[route.sellExchange] || 'Binance'} ({METHOD_LABELS[route.sellMethod]})
                   </span>
                   <button type="button" className="del-route-btn" onClick={() => deleteRoute(i)} title="Eliminar ruta">×</button>
                 </div>
@@ -270,17 +282,36 @@ export default function Dashboard() {
 
         <div className="input-grid-2">
           <div className="input-group">
-            <label>Plataforma de Compra</label>
-            <select value={buyMethod} onChange={(e) => setBuyMethod(e.target.value)}>
-              {BUY_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
+            <label>Exchange de Compra</label>
+            <select value={buyExchange} onChange={(e) => setBuyExchange(e.target.value)}>
+              {EXCHANGES.map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
           </div>
           <div className="input-group">
-            <label>Plataforma de Venta</label>
+            <label>Método de Pago (Compra)</label>
+            <select value={buyMethod} onChange={(e) => setBuyMethod(e.target.value)}>
+              {PAYMENT_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="input-grid-2">
+          <div className="input-group">
+            <label>Exchange de Venta</label>
+            <select value={sellExchange} onChange={(e) => setSellExchange(e.target.value)}>
+              {EXCHANGES.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="input-group">
+            <label>Método de Pago (Venta)</label>
             <select value={sellMethod} onChange={(e) => setSellMethod(e.target.value)}>
-              {SELL_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
+              {PAYMENT_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>

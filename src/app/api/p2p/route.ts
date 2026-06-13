@@ -14,6 +14,13 @@ export async function POST(request: Request) {
     if (payType === 'pago_movil') binancePayType = ['PagoMovil'];
     if (payType === 'zelle') binancePayType = ['Zelle'];
     if (payType === 'nequi') binancePayType = ['Nequi'];
+    if (payType === 'banesco') binancePayType = ['Banesco'];
+    if (payType === 'mercantil') binancePayType = ['Mercantil'];
+    if (payType === 'provincial') binancePayType = ['Provincial'];
+    if (payType === 'bancolombia') binancePayType = ['BancolombiaSA'];
+    if (payType === 'mercadopago') binancePayType = ['MercadoPago'];
+    if (payType === 'paypal') binancePayType = ['Paypal'];
+    if (payType === 'wise') binancePayType = ['Wise'];
 
     const payload = {
       fiat: fiat.toUpperCase(),
