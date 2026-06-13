@@ -22,12 +22,12 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose, userEmail }) => {
       if (data.payment_url) {
         window.location.href = data.payment_url;
       } else {
-        alert('Error al generar el pago. Intenta de nuevo.');
+        alert(data.error || 'Error al generar el pago. Intenta de nuevo.');
         setLoadingPlan(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Error de conexión.');
+      alert('Error de conexión: ' + error.message);
       setLoadingPlan(null);
     }
   };

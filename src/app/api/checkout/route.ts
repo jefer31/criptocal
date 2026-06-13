@@ -50,11 +50,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ payment_url: data.invoice_url });
     } else {
       console.error('NowPayments Error:', data);
-      return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 });
+      return NextResponse.json({ error: `NowPayments Error: ${data.message || JSON.stringify(data)}` }, { status: 500 });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Checkout Endpoint Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: `Internal Server Error: ${error.message}` }, { status: 500 });
   }
 }
