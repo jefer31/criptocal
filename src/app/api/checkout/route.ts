@@ -20,7 +20,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Payment gateway not configured' }, { status: 500 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'; // Default para local
+    // Vercel provee NEXT_PUBLIC_VERCEL_URL automáticamente
+    let appUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_VERCEL_URL || 'http://localhost:3000';
+    if (appUrl && !appUrl.startsWith('http')) {
+      appUrl = `https://${appUrl}`;
+    }
 
     const response = await fetch('https://api.nowpayments.io/v1/invoice', {
       method: 'POST',
@@ -31,7 +35,6 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         price_amount: amount,
         price_currency: 'usd',
-        pay_currency: 'usdt', // Se puede dejar vacío para que elijan la cripto, pero forzamos o sugerimos USDT
         order_id: email, // Usamos el correo como order_id para saber a quién activar
         order_description: description,
         ipn_callback_url: `${appUrl}/api/webhooks/nowpayments`,
