@@ -10,6 +10,7 @@ import MathCalculator from '../components/MathCalculator';
 import ProfileSettings from '../components/ProfileSettings';
 import AlertConfig from '../components/AlertConfig';
 import AdBanner from '../components/AdBanner';
+import PricingModal from '../components/PricingModal';
 
 export default function Home() {
   
@@ -27,6 +28,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('calculadora');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [showTrialExpiredModal, setShowTrialExpiredModal] = useState(false);
@@ -442,7 +444,7 @@ export default function Home() {
         )}
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
-            {isFreeUser && <AdBanner placement="top" />}
+            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             <SpreadScanner />
             <Dashboard />
         </div>
@@ -452,9 +454,13 @@ export default function Home() {
         </div>
 
         <div id="matematica-tab" className={`tab-content ${activeTab === 'matematica' ? 'active' : ''}`}>
-            {isFreeUser && <AdBanner placement="top" />}
+            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             <MathCalculator />
         </div>
+
+        {showPricingModal && (
+          <PricingModal onClose={() => setShowPricingModal(false)} userEmail={user?.email} />
+        )}
 
         <div id="perfil-tab" className={`tab-content ${activeTab === 'perfil' ? 'active' : ''}`}>
             <ProfileSettings />

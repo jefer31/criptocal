@@ -2,9 +2,10 @@ import React from 'react';
 
 interface AdBannerProps {
   placement?: 'top' | 'bottom' | 'sidebar';
+  onUpgrade?: () => void;
 }
 
-const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top' }) => {
+const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top', onUpgrade }) => {
   return (
     <div className={`ad-banner-container placement-${placement}`} style={{
       width: '100%',
@@ -30,7 +31,7 @@ const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top' }) => {
         Este espacio generará ingresos pasivos mostrando anuncios a los usuarios del plan gratuito. 
         Los usuarios PRO no verán esto.
       </p>
-      <button style={{
+      <button onClick={onUpgrade} style={{
         marginTop: '15px',
         padding: '8px 16px',
         backgroundColor: 'var(--primary)',
