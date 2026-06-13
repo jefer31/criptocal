@@ -27,15 +27,35 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [currentTime, setCurrentTime] = useState('Cargando fecha...');
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [showTrialExpiredModal, setShowTrialExpiredModal] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   
   useEffect(() => {
+    setIsClient(true);
     if (typeof window !== 'undefined') {
       // Restore remember-me email
       const savedEmail = localStorage.getItem('rememberedEmail');
       if (savedEmail) {
         setEmail(savedEmail);
         setRememberMe(true);
+      }
+      
+      // ANONYMOUS 7-DAY TRIAL LOGIC
+      const firstVisit = localStorage.getItem('criptocal_first_visit');
+      if (!firstVisit) {
+        localStorage.setItem('criptocal_first_visit', Date.now().toString());
+        setTrialDaysLeft(7);
+      } else {
+        const firstVisitDate = parseInt(firstVisit, 10);
+        const daysElapsed = Math.floor((Date.now() - firstVisitDate) / (1000 * 60 * 60 * 24));
+        const daysLeft = Math.max(0, 7 - daysElapsed);
+        setTrialDaysLeft(daysLeft);
+        
+        // Block if 7 days passed AND user is not logged in
+        if (daysLeft === 0) {
+          setShowTrialExpiredModal(true);
+        }
       }
     }
 
@@ -46,6 +66,7 @@ export default function Home() {
       }
       
       setUser(sessionUser);
+      setShowTrialExpiredModal(false); // If logged in, never show the anonymous trial block
       
       // Si es un usuario nuevo y no tiene configurado el fin de prueba, le damos 7 días
       if (!sessionUser.user_metadata?.trial_ends_at) {
@@ -69,6 +90,15 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Update expired modal visibility if user logs out while time is expired
+  useEffect(() => {
+    if (isClient && !user && trialDaysLeft === 0) {
+      setShowTrialExpiredModal(true);
+    }
+  }, [user, trialDaysLeft, isClient]);
+
+  const [currentTime, setCurrentTime] = useState('Cargando fecha...');
+  
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -99,6 +129,7 @@ export default function Home() {
             localStorage.removeItem('rememberedEmail');
           }
           setShowAuthModal(false);
+          setShowTrialExpiredModal(false);
         }
       } else {
         if (!username || !phone) {
@@ -181,6 +212,24 @@ export default function Home() {
         <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', padding: '0 24px 24px' }}>
             <button className="btn-secondary" onClick={() => setShowTerms(false)} >Entendido y Acepto las Políticas</button>
         </div>
+    </div>
+</div>
+)}
+
+{showTrialExpiredModal && (
+<div className="terms-modal-overlay" style={{ zIndex: 9999, display: 'flex', background: 'rgba(10, 10, 26, 0.95)', backdropFilter: 'blur(10px)' }}>
+    <div className="terms-modal-card" style={{ maxWidth: '500px', textAlign: 'center', padding: '40px 30px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
+        <h2 style={{ fontSize: '24px', marginBottom: '15px', color: 'var(--text-color)' }}>Tu prueba de 7 días ha finalizado</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '30px', lineHeight: '1.6' }}>
+            Esperamos que hayas descubierto grandes oportunidades de arbitraje. Para seguir utilizando CriptoCal y acceder a tus historiales, debes crear una cuenta gratuita.
+        </p>
+        <button className="btn-primary" onClick={() => { setShowAuthModal(true); setIsLoginMode(false); }} style={{ width: '100%', marginBottom: '15px', padding: '15px' }}>
+            Registrarse Gratis
+        </button>
+        <button className="btn-secondary" onClick={() => { setShowAuthModal(true); setIsLoginMode(true); }} style={{ width: '100%', padding: '15px' }}>
+            Ya tengo una cuenta
+        </button>
     </div>
 </div>
 )}
@@ -382,6 +431,12 @@ export default function Home() {
             </h2>
             <div  id="topHeaderClock">{currentTime}</div>
         </div>
+
+        {isClient && !user && trialDaysLeft !== null && trialDaysLeft > 0 && (
+          <div style={{ backgroundColor: 'var(--primary)', color: '#fff', padding: '10px', textAlign: 'center', fontSize: '14px', fontWeight: 'bold' }}>
+            Prueba Gratuita: Te quedan {trialDaysLeft} {trialDaysLeft === 1 ? 'día' : 'días'}. ¡Crea una cuenta para no perder el acceso!
+          </div>
+        )}
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
             <SpreadScanner />
