@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         price_amount: amount,
         price_currency: 'usd',
+        pay_currency: 'usdtrc20', // Obligamos directo a USDT en Tron (Sin errores)
         order_id: email, // Usamos el correo como order_id para saber a quién activar
         order_description: description,
         ipn_callback_url: `${appUrl}/api/webhooks/nowpayments`,
