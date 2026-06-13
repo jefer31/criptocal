@@ -219,6 +219,10 @@ export default function Dashboard() {
     }
   };
 
+  const supportedBinanceMethods = ['binance_p2p', 'zinli', 'pago_movil', 'zelle', 'nequi'];
+  const showBuyLive = supportedBinanceMethods.includes(buyMethod);
+  const showSellLive = supportedBinanceMethods.includes(sellMethod);
+
   return (
     <div className="standard-calc">
       <DynamicFiatRates fiatCurrency={pairInfo.currency} />
@@ -295,9 +299,11 @@ export default function Dashboard() {
           <div className="input-group">
             <label>
               Precio Compra ({pairInfo.currency} por 1 USDT)
-              <span className="live-api-btn" onClick={() => fetchLivePrice('compra')}>
-                {liveStatusBuy || '🔄 En vivo (Binance)'}
-              </span>
+              {showBuyLive && (
+                <span className="live-api-btn" onClick={() => fetchLivePrice('compra')} title="Extraer precio real de Binance P2P">
+                  {liveStatusBuy || '🔄 En vivo (Binance)'}
+                </span>
+              )}
             </label>
             <div className="input-group-wrapper">
               <input type="number" placeholder="Ej: 39.50" step="any" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} />
@@ -318,9 +324,11 @@ export default function Dashboard() {
             <div className="input-group">
               <label>
                 Precio Venta ({pairInfo.currency} por 1 USDT)
-                <span className="live-api-btn" onClick={() => fetchLivePrice('venta')}>
-                  {liveStatusSell || '🔄 En vivo (Binance)'}
-                </span>
+                {showSellLive && (
+                  <span className="live-api-btn" onClick={() => fetchLivePrice('venta')} title="Extraer precio real de Binance P2P">
+                    {liveStatusSell || '🔄 En vivo (Binance)'}
+                  </span>
+                )}
               </label>
               <div className="input-group-wrapper">
                 <input type="number" placeholder="Ej: 40.00" step="any" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
