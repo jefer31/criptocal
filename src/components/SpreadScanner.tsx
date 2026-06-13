@@ -173,7 +173,7 @@ export default function SpreadScanner() {
         <div className="spread-scanner-title">
           <span className="scanner-icon">📡</span>
           <div>
-            <h2>Scanner de Spreads en Tiempo Real</h2>
+            <h2>Scanner de Spreads en Tiempo Real (Mercado Spot)</h2>
             <p className="scanner-subtitle">
               {exchangesOnline} exchanges conectados • {totalScanned} precios escaneados
               {lastUpdate && <> • Última actualización: {lastUpdate}</>}
@@ -187,6 +187,11 @@ export default function SpreadScanner() {
         >
           {isScanning ? '⏳ Escaneando...' : `🔄 Actualizar (${countdown}s)`}
         </button>
+      </div>
+
+      <div style={{ backgroundColor: 'rgba(255, 165, 0, 0.1)', borderLeft: '4px solid #FFA500', padding: '12px', margin: '0 0 15px 0', borderRadius: '4px', fontSize: '13px', color: 'var(--text-muted)' }}>
+        <strong>⚠️ Atención: Mercado Spot Global</strong><br/>
+        Este escáner rastrea precios de criptomonedas puras (Ej. BTC/USDT) entre exchanges mundiales. Las oportunidades aquí <strong>NO incluyen comisiones de retiro de red</strong> (gas fees). Solo es rentable para capitales altos donde la ganancia supera la tarifa de transferencia del exchange. Para arbitraje local con dinero fiat (Ej. Bolívares o Pesos), usa la pestaña de Arbitraje P2P.
       </div>
 
       {isScanning && spreads.length === 0 ? (

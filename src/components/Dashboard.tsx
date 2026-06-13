@@ -295,8 +295,13 @@ export default function Dashboard() {
     <div className="standard-calc">
       <div className="calc-panel-box" onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') calculateArbitrage(); }}>
         <div className="panel-title-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div><span>📥</span> Parámetros de Operación Cruzada</div>
+          <div><span>📥</span> Calculadora Pro (Spot / Fiat)</div>
           <button className="btn-save-route" onClick={saveRoute} type="button">⭐ Guardar Ruta</button>
+        </div>
+        
+        <div style={{ backgroundColor: 'rgba(30, 144, 255, 0.1)', borderLeft: '4px solid #1E90FF', padding: '12px', margin: '15px 0', borderRadius: '4px', fontSize: '13px', color: 'var(--text-muted)' }}>
+          <strong>💡 ¿Cómo usar esta calculadora?</strong><br/>
+          Esta herramienta calcula arbitraje cruzado avanzado. Si operas <strong>Spot</strong>, incluye las comisiones de red por transferir monedas entre exchanges. Si operas <strong>Fiat (P2P)</strong>, puedes establecer comisiones de red en 0 si mueves el dinero por transferencias bancarias locales.
         </div>
         
         {savedRoutes.length > 0 && (

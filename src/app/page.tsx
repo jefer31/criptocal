@@ -397,7 +397,10 @@ export default function Home() {
 
         <div className="sidebar-menu">
                             <div className={`menu-item ${activeTab === 'calculadora' ? 'active' : ''}`} onClick={() => { setActiveTab('calculadora'); setIsSidebarOpen(false); }}>
-                                <span>📈</span> Pro Arbitraje
+                                <span>🌍</span> Arbitraje P2P (Fiat)
+                            </div>
+                            <div className={`menu-item ${activeTab === 'spot' ? 'active' : ''}`} onClick={() => { setActiveTab('spot'); setIsSidebarOpen(false); }}>
+                                <span>📈</span> Escáner Spot (Cripto)
                             </div>
                             <div className={`menu-item ${activeTab === 'alertas' ? 'active' : ''}`} onClick={() => { 
                               if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
@@ -438,7 +441,7 @@ export default function Home() {
                 <span></span>
             </button>
             <h2 id="mainContentTabTitle">
-                {activeTab === 'calculadora' ? 'Calculadora Pro' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
+                {activeTab === 'calculadora' ? 'Arbitraje P2P (Fiat)' : activeTab === 'spot' ? 'Escáner Spot (Cripto)' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
             </h2>
             <div  id="topHeaderClock">{currentTime}</div>
         </div>
@@ -452,8 +455,12 @@ export default function Home() {
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             <VenezuelaRates />
-            <SpreadScanner />
             <Dashboard />
+        </div>
+
+        <div id="spot-tab" className={`tab-content ${activeTab === 'spot' ? 'active' : ''}`}>
+            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            <SpreadScanner />
         </div>
 
         <div id="historial-tab" className={`tab-content ${activeTab === 'historial' ? 'active' : ''}`}>
