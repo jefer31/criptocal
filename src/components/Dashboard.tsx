@@ -250,7 +250,7 @@ export default function Dashboard() {
   const showSellLive = sellExchange === 'binance_p2p';
 
   return (
-    <div className="standard-calc">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
       <DynamicFiatRates fiatCurrency={pairInfo.currency} />
       <div className="calc-panel-box" onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') calculateP2P(); }}>
         <div className="panel-title-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
