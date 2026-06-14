@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { fiat, tradeType, payType } = await request.json();
+    const { fiat, tradeType, payType, asset = "USDT" } = await request.json();
 
     if (!fiat || !tradeType) {
       return NextResponse.json({ error: 'Faltan parámetros obligatorios (fiat, tradeType).' }, { status: 400 });
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       page: 1,
       rows: 5,
       tradeType: tradeType.toUpperCase(),
-      asset: "USDT",
+      asset: asset.toUpperCase(),
       countries: [],
       proMerchantAds: false,
       shieldMerchantAds: false,

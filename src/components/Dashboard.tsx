@@ -69,8 +69,11 @@ export default function Dashboard() {
   const [buyExchange, setBuyExchange] = useState('binance_p2p');
   const [buyMethod, setBuyMethod] = useState('pago_movil');
   const [sellExchange, setSellExchange] = useState('binance_p2p');
-  const [sellMethod, setSellMethod] = useState('pago_movil');
+  const [sellMethod, setSellMethod] = useState<string>('pago_movil');
   const [capital, setCapital] = useState(100);
+  
+  // Crypto Asset State
+  const [cryptoAsset, setCryptoAsset] = useState<string>('USDT');
 
   const [buyPrice, setBuyPrice] = useState('');
   const [sellPrice, setSellPrice] = useState('');
@@ -151,7 +154,8 @@ export default function Dashboard() {
         body: JSON.stringify({
           fiat: pairInfo.currency,
           tradeType: tradeType,
-          payType: method
+          payType: method,
+          asset: cryptoAsset
         })
       });
 
@@ -187,15 +191,15 @@ export default function Dashboard() {
     let resPayload: any = {};
     const sPrice = parseFloat(sellPrice);
 
-    // Flujo Maker Estricto (FIAT -> USDT -> FIAT)
-    // Paso 1: Comprar USDT con Capital en Moneda Local
+    // Flujo Maker Estricto (FIAT -> CRYPTO -> FIAT)
+    // Paso 1: Comprar CRYPTO con Capital en Moneda Local
     const capitalTrasFee = capital * (1 - (buyFee / 100));
-    const cantidadUSDT = capitalTrasFee / p1Price; // Divido Fiat / PrecioCompra = USDT
+    const cantidadCripto = capitalTrasFee / p1Price; // Divido Fiat / PrecioCompra = Cripto
 
     if (calcStrategy === 'manual') {
       if (isNaN(sPrice) || sPrice <= 0) return alert('⚠️ Ingrese un precio válido en el Paso 2.');
-      // Paso 2: Vender USDT para recuperar Moneda Local
-      const retornoBruto = cantidadUSDT * sPrice; // Multiplico USDT * PrecioVenta = Fiat
+      // Paso 2: Vender CRYPTO para recuperar Moneda Local
+      const retornoBruto = cantidadCripto * sPrice; // Multiplico Cripto * PrecioVenta = Fiat
       const retornoFinal = retornoBruto * (1 - (sellFee / 100));
       ganancia = retornoFinal - capital;
       spreadNetoPorcentaje = (ganancia / capital) * 100;
@@ -204,7 +208,7 @@ export default function Dashboard() {
         retornoFinal: retornoFinal.toFixed(2),
         ganancia: ganancia.toFixed(2),
         monedaGanancia: pairInfo.currency,
-        cantidadUSDT: cantidadUSDT.toFixed(2),
+        cantidadCripto: cantidadCripto.toFixed(8),
         spreadNetoPorcentaje: spreadNetoPorcentaje.toFixed(2),
         precioPaso2: sellPrice
       };
@@ -212,14 +216,14 @@ export default function Dashboard() {
       if (isNaN(targetMargin)) return alert('⚠️ Ingrese un porcentaje válido.');
       const retornoObjetivo = capital * (1 + (targetMargin / 100)); // Quiero X% más de Fiat
       const retornoBrutoNecesario = retornoObjetivo / (1 - (sellFee / 100));
-      const precioPaso2Sugerido = retornoBrutoNecesario / cantidadUSDT;
+      const precioPaso2Sugerido = retornoBrutoNecesario / cantidadCripto;
       setSellPrice(precioPaso2Sugerido.toFixed(2));
       spreadNetoPorcentaje = targetMargin;
       resPayload = {
         retornoFinal: retornoObjetivo.toFixed(2),
         ganancia: (retornoObjetivo - capital).toFixed(2),
         monedaGanancia: pairInfo.currency,
-        cantidadUSDT: cantidadUSDT.toFixed(2),
+        cantidadCripto: cantidadCripto.toFixed(8),
         spreadNetoPorcentaje: spreadNetoPorcentaje.toFixed(2),
         precioPaso2: precioPaso2Sugerido.toFixed(2)
       };
@@ -260,8 +264,8 @@ export default function Dashboard() {
 
         <div style={{ backgroundColor: 'rgba(0, 173, 181, 0.08)', borderLeft: '4px solid #00ADB5', padding: '12px', margin: '15px 0', borderRadius: '4px', fontSize: '13px', color: 'var(--text-muted)' }}>
           <strong>💡 Lógica Maker P2P</strong><br/>
-          Esta calculadora está diseñada estrictamente para comerciantes P2P (Makers). El flujo lógico es: <strong>Moneda Local ➔ USDT ➔ Moneda Local</strong>.<br/>
-          Pones anuncios para comprar USDT barato con tu banco, y luego anuncios para vender esos USDT más caro a tu banco. Tu capital inicial debe ser tu Moneda Local.
+          Esta calculadora está diseñada estrictamente para comerciantes P2P (Makers). El flujo lógico es: <strong>Moneda Local ➔ {cryptoAsset} ➔ Moneda Local</strong>.<br/>
+          Pones anuncios para comprar {cryptoAsset} más barato con tu banco, y luego anuncios para vender esos {cryptoAsset} más caro a tu banco. Tu capital inicial debe ser tu Moneda Local.
         </div>
 
         {savedRoutes.length > 0 && (
@@ -280,21 +284,38 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="input-group" style={{ marginBottom: '20px' }}>
-          <label>País / Moneda Local</label>
-          <select value={selectedPair} onChange={(e) => {
-            setSelectedPair(e.target.value);
-            const pair = P2P_PAIRS.find(p => p.value === e.target.value);
-            if (pair) {
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+          <div className="input-group" style={{ marginBottom: 0 }}>
+            <label>País / Moneda Local</label>
+            <select value={selectedPair} onChange={(e) => {
+              setSelectedPair(e.target.value);
+              const pair = P2P_PAIRS.find(p => p.value === e.target.value);
+              if (pair) {
+                setBuyPrice('');
+                setSellPrice('');
+              }
+            }}>
+              {P2P_PAIRS.map(p => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="input-group" style={{ marginBottom: 0 }}>
+            <label>Criptomoneda a Operar</label>
+            <select value={cryptoAsset} onChange={(e) => {
+              setCryptoAsset(e.target.value);
               setBuyPrice('');
               setSellPrice('');
-            }
-          }}>
-            {P2P_PAIRS.map(p => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
+            }}>
+              <option value="USDT">USDT</option>
+              <option value="BTC">Bitcoin (BTC)</option>
+              <option value="ETH">Ethereum (ETH)</option>
+              <option value="FDUSD">FDUSD</option>
+              <option value="USDC">USDC</option>
+            </select>
+          </div>
         </div>
+
         <div className="input-group" style={{ marginBottom: '20px' }}>
           <label>Capital Inicial (En tu banco local)</label>
           <div className="input-group-wrapper">
@@ -305,7 +326,7 @@ export default function Dashboard() {
 
         <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px', marginBottom: '20px' }}>
           <h4 style={{ margin: '0 0 15px 0', color: 'var(--primary)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            🛒 Paso 1: Comprar USDT (Tu anuncio)
+            🛒 Paso 1: Comprar {cryptoAsset} (Tu anuncio)
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div className="input-group" style={{ marginBottom: 0 }}>
@@ -351,7 +372,7 @@ export default function Dashboard() {
         <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
             <h4 style={{ margin: 0, color: 'var(--primary)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              💰 Paso 2: Vender USDT (Tu anuncio)
+              💰 Paso 2: Vender {cryptoAsset} (Tu anuncio)
             </h4>
             <div className="calc-mode-switch-container" style={{ margin: 0, width: '100%', maxWidth: 'max-content' }}>
               <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => setCalcStrategy('manual')}>Manual</button>
@@ -436,12 +457,12 @@ export default function Dashboard() {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '10px', fontSize: '13px', color: 'var(--text-muted)' }}>
               <span>Spread Neto Final: <strong style={{ color: result.isPositive ? 'var(--success)' : 'var(--danger)' }}>{result.spreadNetoPorcentaje}%</strong></span>
-              <span>USDT Adquiridos: <strong>{result.cantidadUSDT} USDT</strong></span>
+              <span>{cryptoAsset} Adquiridos: <strong>{result.cantidadCripto} {cryptoAsset}</strong></span>
             </div>
 
             {calcStrategy === 'objetivo' && (
               <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '4px', textAlign: 'center', marginTop: '10px' }}>
-                <div className="stat-label">Precio Sugerido para el Paso 2 (Venta USDT)</div>
+                <div className="stat-label">Precio Sugerido para el Paso 2 (Venta {cryptoAsset})</div>
                 <div className="stat-value" style={{ color: 'var(--primary)' }}>{result.precioPaso2} <span style={{fontSize: '0.6em'}}>{pairInfo.currency}</span></div>
               </div>
             )}
@@ -513,9 +534,9 @@ export default function Dashboard() {
 
                 const rows = [
                   ['Capital invertido', `${pairInfo.currency} ${formatNum(capital)}`],
-                  [`Precio Compra (${pairInfo.currency}/USDT)`, `${formatNum(buyPrice)}`],
-                  [`Precio Venta (${pairInfo.currency}/USDT)`, `${formatNum(result.precioPaso2)}`],
-                  ['USDT Adquiridos en Paso 1', `USDT ${formatNum(result.cantidadUSDT)}`],
+                  [`Precio Compra (${pairInfo.currency}/${cryptoAsset})`, `${formatNum(buyPrice)}`],
+                  [`Precio Venta (${pairInfo.currency}/${cryptoAsset})`, `${formatNum(result.precioPaso2)}`],
+                  [`${cryptoAsset} Adquiridos en Paso 1`, `${cryptoAsset} ${formatNum(result.cantidadCripto)}`],
                   ['Retorno Bruto', `${pairInfo.currency} ${formatNum(result.retornoFinal)}`],
                 ];
 
