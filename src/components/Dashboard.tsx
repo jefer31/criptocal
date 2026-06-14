@@ -282,111 +282,122 @@ export default function Dashboard() {
 
         <div className="calc-mode-switch-container">
           <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} onClick={() => setCalcStrategy('manual')}>Modo Manual</button>
-        <div className="input-group">
-          <label>Capital Inicial (En tu banco)</label>
+        <div className="input-group" style={{ marginBottom: '20px' }}>
+          <label>Capital Inicial (En tu banco local)</label>
           <div className="input-group-wrapper">
             <input type="number" placeholder="Ej: 100000" step="any" value={capital} onChange={(e) => setCapital(parseFloat(e.target.value))} />
             <span className="currency-tag">{pairInfo.currency}</span>
           </div>
         </div>
 
-        <div className="input-grid-2">
-          <div className="input-group">
-            <label>Exchange (Paso 1: Comprar USDT)</label>
-            <select value={buyExchange} onChange={(e) => setBuyExchange(e.target.value)}>
-              {EXCHANGES.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="input-group">
-            <label>Método de Pago (Paso 1)</label>
-            <select value={buyMethod} onChange={(e) => setBuyMethod(e.target.value)}>
-              {PAYMENT_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="input-grid-2">
-          <div className="input-group">
-            <label>Exchange (Paso 2: Vender USDT)</label>
-            <select value={sellExchange} onChange={(e) => setSellExchange(e.target.value)}>
-              {EXCHANGES.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="input-group">
-            <label>Método de Pago (Paso 2)</label>
-            <select value={sellMethod} onChange={(e) => setSellMethod(e.target.value)}>
-              {PAYMENT_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="calc-mode-switch-container" style={{ margin: '10px 0' }}>
-          <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} onClick={() => setCalcStrategy('manual')}>Modo Manual</button>
-          <button className={`mode-switch-btn ${calcStrategy === 'objetivo' ? 'active' : ''}`} onClick={() => setCalcStrategy('objetivo')}>Modo Objetivo %</button>
-        </div>
-
-        <div className="input-grid-2">
-          <div className="input-group">
-            <label>
-              Precio (Paso 1: Compra USDT)
-              {showBuyLive && (
-                <span className="live-api-btn" onClick={() => fetchLivePrice('compra')} title="Extraer precio real de Binance P2P">
-                  {liveStatusBuy || '🔄 En vivo (Binance)'}
-                </span>
-              )}
-            </label>
-            <div className="input-group-wrapper">
-              <input type="number" placeholder="Ej: 39.50" step="any" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} />
-              <span className="currency-tag">{pairInfo.currency}</span>
+        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px', marginBottom: '20px' }}>
+          <h4 style={{ margin: '0 0 15px 0', color: 'var(--primary)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            🛒 Paso 1: Comprar USDT (Tu anuncio)
+          </h4>
+          <div className="input-grid-2" style={{ marginBottom: '15px' }}>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Exchange (Plataforma)</label>
+              <select value={buyExchange} onChange={(e) => setBuyExchange(e.target.value)}>
+                {EXCHANGES.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Método de Pago (Banco)</label>
+              <select value={buyMethod} onChange={(e) => setBuyMethod(e.target.value)}>
+                {PAYMENT_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
             </div>
           </div>
-          <div className="input-group">
-            <label>Comisión de Plataforma (Paso 1)</label>
-            <div className="input-group-wrapper">
-              <input type="number" placeholder="0" step="any" value={buyFee} onChange={(e) => setBuyFee(parseFloat(e.target.value))} />
-              <span className="currency-tag">%</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="input-grid-2">
-          {calcStrategy === 'manual' ? (
-            <div className="input-group">
+          <div className="input-grid-2">
+            <div className="input-group" style={{ marginBottom: 0 }}>
               <label>
-                Precio (Paso 2: Venta USDT)
-                {showSellLive && (
-                  <span className="live-api-btn" onClick={() => fetchLivePrice('venta')} title="Extraer precio real de Binance P2P">
-                    {liveStatusSell || '🔄 En vivo (Binance)'}
+                Precio de Compra
+                {showBuyLive && (
+                  <span className="live-api-btn" onClick={() => fetchLivePrice('compra')} title="Extraer precio real de Binance P2P">
+                    {liveStatusBuy || '🔄 En vivo'}
                   </span>
                 )}
               </label>
               <div className="input-group-wrapper">
-                <input type="number" placeholder="Ej: 40.00" step="any" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
+                <input type="number" placeholder="Ej: 39.50" step="any" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} />
                 <span className="currency-tag">{pairInfo.currency}</span>
               </div>
             </div>
-          ) : (
-            <div className="input-group">
-              <label>Margen Objetivo (Ej: 2.0%)</label>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Comisión de Plataforma</label>
               <div className="input-group-wrapper">
-                <input type="number" placeholder="2.0" step="any" value={targetMargin} onChange={(e) => setTargetMargin(parseFloat(e.target.value))} />
+                <input type="number" placeholder="0" step="any" value={buyFee} onChange={(e) => setBuyFee(parseFloat(e.target.value))} />
                 <span className="currency-tag">%</span>
               </div>
             </div>
-          )}
-          <div className="input-group">
-            <label>Comisión de Plataforma (Paso 2)</label>
-            <div className="input-group-wrapper">
-              <input type="number" placeholder="0" step="any" value={sellFee} onChange={(e) => setSellFee(parseFloat(e.target.value))} />
-              <span className="currency-tag">%</span>
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h4 style={{ margin: 0, color: 'var(--primary)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              💰 Paso 2: Vender USDT (Tu anuncio)
+            </h4>
+            <div className="calc-mode-switch-container" style={{ margin: 0 }}>
+              <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => setCalcStrategy('manual')}>Manual</button>
+              <button className={`mode-switch-btn ${calcStrategy === 'objetivo' ? 'active' : ''}`} style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => setCalcStrategy('objetivo')}>Objetivo %</button>
+            </div>
+          </div>
+          
+          <div className="input-grid-2" style={{ marginBottom: '15px' }}>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Exchange (Plataforma)</label>
+              <select value={sellExchange} onChange={(e) => setSellExchange(e.target.value)}>
+                {EXCHANGES.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Método de Pago (Banco)</label>
+              <select value={sellMethod} onChange={(e) => setSellMethod(e.target.value)}>
+                {PAYMENT_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div className="input-grid-2">
+            {calcStrategy === 'manual' ? (
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>
+                  Precio de Venta
+                  {showSellLive && (
+                    <span className="live-api-btn" onClick={() => fetchLivePrice('venta')} title="Extraer precio real de Binance P2P">
+                      {liveStatusSell || '🔄 En vivo'}
+                    </span>
+                  )}
+                </label>
+                <div className="input-group-wrapper">
+                  <input type="number" placeholder="Ej: 40.00" step="any" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
+                  <span className="currency-tag">{pairInfo.currency}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Margen Objetivo (Ej: 2.0%)</label>
+                <div className="input-group-wrapper">
+                  <input type="number" placeholder="2.0" step="any" value={targetMargin} onChange={(e) => setTargetMargin(parseFloat(e.target.value))} />
+                  <span className="currency-tag">%</span>
+                </div>
+              </div>
+            )}
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Comisión de Plataforma</label>
+              <div className="input-group-wrapper">
+                <input type="number" placeholder="0" step="any" value={sellFee} onChange={(e) => setSellFee(parseFloat(e.target.value))} />
+                <span className="currency-tag">%</span>
+              </div>
             </div>
           </div>
         </div>
