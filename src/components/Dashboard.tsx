@@ -280,8 +280,21 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="calc-mode-switch-container">
-          <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} onClick={() => setCalcStrategy('manual')}>Modo Manual</button>
+        <div className="input-group" style={{ marginBottom: '20px' }}>
+          <label>País / Moneda Local</label>
+          <select value={selectedPair} onChange={(e) => {
+            setSelectedPair(e.target.value);
+            const pair = P2P_PAIRS.find(p => p.value === e.target.value);
+            if (pair) {
+              setBuyPrice('');
+              setSellPrice('');
+            }
+          }}>
+            {P2P_PAIRS.map(p => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </div>
         <div className="input-group" style={{ marginBottom: '20px' }}>
           <label>Capital Inicial (En tu banco local)</label>
           <div className="input-group-wrapper">
@@ -294,7 +307,7 @@ export default function Dashboard() {
           <h4 style={{ margin: '0 0 15px 0', color: 'var(--primary)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             🛒 Paso 1: Comprar USDT (Tu anuncio)
           </h4>
-          <div className="input-grid-2" style={{ marginBottom: '15px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div className="input-group" style={{ marginBottom: 0 }}>
               <label>Exchange (Plataforma)</label>
               <select value={buyExchange} onChange={(e) => setBuyExchange(e.target.value)}>
@@ -311,8 +324,6 @@ export default function Dashboard() {
                 ))}
               </select>
             </div>
-          </div>
-          <div className="input-grid-2">
             <div className="input-group" style={{ marginBottom: 0 }}>
               <label>
                 Precio de Compra
@@ -348,7 +359,7 @@ export default function Dashboard() {
             </div>
           </div>
           
-          <div className="input-grid-2" style={{ marginBottom: '15px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div className="input-group" style={{ marginBottom: 0 }}>
               <label>Exchange (Plataforma)</label>
               <select value={sellExchange} onChange={(e) => setSellExchange(e.target.value)}>
@@ -365,9 +376,7 @@ export default function Dashboard() {
                 ))}
               </select>
             </div>
-          </div>
           
-          <div className="input-grid-2">
             {calcStrategy === 'manual' ? (
               <div className="input-group" style={{ marginBottom: 0 }}>
                 <label>
