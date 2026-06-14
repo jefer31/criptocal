@@ -134,8 +134,12 @@ export default function Dashboard() {
       return;
     }
 
-    // In Binance P2P API, if user is BUYING USDT with Fiat, they are taking a SELL ad.
-    // If user is SELLING USDT for Fiat, they are taking a BUY ad.
+    // Como somos P2P Makers: 
+    // Paso 1 (Compra USDT): Publicamos un anuncio de COMPRA -> En Binance es un ad BUY.
+    // Paso 2 (Venta USDT): Publicamos un anuncio de VENTA -> En Binance es un ad SELL.
+    // WAIT: En la API de Binance P2P, para ver a qué precio debo publicar mi anuncio de COMPRA (para competir), 
+    // debo mirar los anuncios de VENTA de los demás (tradeType = SELL). 
+    // Y para publicar mi anuncio de VENTA, debo mirar los de COMPRA (tradeType = BUY).
     const tradeType = isCompra ? 'SELL' : 'BUY';
 
     setStatus('⏳ Buscando P2P...');
@@ -172,51 +176,58 @@ export default function Dashboard() {
   };
 
   const calculateP2P = async () => {
-    const bPrice = parseFloat(buyPrice);
-    if (isNaN(capital) || capital <= 0 || isNaN(bPrice) || bPrice <= 0) {
-      alert('⚠️ Por favor ingrese valores numéricos válidos.');
+    const p1Price = parseFloat(buyPrice);
+    if (isNaN(capital) || capital <= 0 || isNaN(p1Price) || p1Price <= 0) {
+      alert('⚠️ Por favor ingrese valores numéricos válidos en el Paso 1.');
       return;
     }
 
-    const capitalTrasFeeCompra = capital * (1 - (buyFee / 100));
-    const cantidadMonedaLocal = capitalTrasFeeCompra * bPrice;
-
-    let retornoUSDT = 0;
+    let ganancia = 0;
     let spreadNetoPorcentaje = 0;
+    let resPayload: any = {};
+    const sPrice = parseFloat(sellPrice);
+
+    // Flujo Maker Estricto (FIAT -> USDT -> FIAT)
+    // Paso 1: Comprar USDT con Capital en Moneda Local
+    const capitalTrasFee = capital * (1 - (buyFee / 100));
+    const cantidadUSDT = capitalTrasFee / p1Price; // Divido Fiat / PrecioCompra = USDT
 
     if (calcStrategy === 'manual') {
-      const sPrice = parseFloat(sellPrice);
-      if (isNaN(sPrice) || sPrice <= 0) {
-        alert('⚠️ Por favor ingrese un Precio de Venta válido.');
-        return;
-      }
-      const retornoBruto = cantidadMonedaLocal / sPrice;
-      retornoUSDT = retornoBruto * (1 - (sellFee / 100));
-      spreadNetoPorcentaje = ((retornoUSDT - capital) / capital) * 100;
+      if (isNaN(sPrice) || sPrice <= 0) return alert('⚠️ Ingrese un precio válido en el Paso 2.');
+      // Paso 2: Vender USDT para recuperar Moneda Local
+      const retornoBruto = cantidadUSDT * sPrice; // Multiplico USDT * PrecioVenta = Fiat
+      const retornoFinal = retornoBruto * (1 - (sellFee / 100));
+      ganancia = retornoFinal - capital;
+      spreadNetoPorcentaje = (ganancia / capital) * 100;
+      
+      resPayload = {
+        retornoFinal: retornoFinal.toFixed(2),
+        ganancia: ganancia.toFixed(2),
+        monedaGanancia: pairInfo.currency,
+        cantidadUSDT: cantidadUSDT.toFixed(2),
+        spreadNetoPorcentaje: spreadNetoPorcentaje.toFixed(2),
+        precioPaso2: sellPrice
+      };
     } else {
-      if (isNaN(targetMargin)) {
-        alert('⚠️ Ingrese un porcentaje de margen objetivo válido.');
-        return;
-      }
-      retornoUSDT = capital * (1 + (targetMargin / 100));
-      const retornoBrutoNecesario = retornoUSDT / (1 - (sellFee / 100));
-      const precioVentaSugerido = cantidadMonedaLocal / retornoBrutoNecesario;
-      setSellPrice(precioVentaSugerido.toFixed(2));
+      if (isNaN(targetMargin)) return alert('⚠️ Ingrese un porcentaje válido.');
+      const retornoObjetivo = capital * (1 + (targetMargin / 100)); // Quiero X% más de Fiat
+      const retornoBrutoNecesario = retornoObjetivo / (1 - (sellFee / 100));
+      const precioPaso2Sugerido = retornoBrutoNecesario / cantidadUSDT;
+      setSellPrice(precioPaso2Sugerido.toFixed(2));
       spreadNetoPorcentaje = targetMargin;
+      resPayload = {
+        retornoFinal: retornoObjetivo.toFixed(2),
+        ganancia: (retornoObjetivo - capital).toFixed(2),
+        monedaGanancia: pairInfo.currency,
+        cantidadUSDT: cantidadUSDT.toFixed(2),
+        spreadNetoPorcentaje: spreadNetoPorcentaje.toFixed(2),
+        precioPaso2: precioPaso2Sugerido.toFixed(2)
+      };
     }
 
-    const gananciaUSDT = retornoUSDT - capital;
-
-    const resPayload = {
-      monedaLocal: pairInfo.currency,
-      cantidadMonedaLocal: cantidadMonedaLocal.toFixed(2),
-      retornoUSDT: retornoUSDT.toFixed(2),
-      gananciaUSDT: gananciaUSDT.toFixed(2),
-      spreadNetoPorcentaje: spreadNetoPorcentaje.toFixed(2),
-      isPositive: spreadNetoPorcentaje >= 0,
-      isHighlyProfitable: spreadNetoPorcentaje >= 0.5,
-      precioVenta: calcStrategy === 'manual' ? sellPrice : (cantidadMonedaLocal / (retornoUSDT / (1 - (sellFee / 100)))).toFixed(2),
-    };
+    resPayload.monedaLocal = pairInfo.currency;
+    resPayload.isPositive = spreadNetoPorcentaje >= 0;
+    resPayload.isHighlyProfitable = spreadNetoPorcentaje >= 0.5;
 
     setResult(resPayload);
 
@@ -225,11 +236,11 @@ export default function Dashboard() {
       await supabase.from('operation_history').insert([{
         user_id: session.user.id,
         fecha: new Date().toLocaleString(),
-        estrategia: `P2P ${pairInfo.currency} (${EXCHANGE_LABELS[buyExchange]} ${METHOD_LABELS[buyMethod]} ➔ ${EXCHANGE_LABELS[sellExchange]} ${METHOD_LABELS[sellMethod]})`,
-        capital: `USDT ${capital.toFixed(2)}`,
-        compra: bPrice.toFixed(2),
-        venta: resPayload.precioVenta,
-        neto: `USDT ${resPayload.retornoUSDT}`,
+        estrategia: `P2P Maker ${pairInfo.currency} (${EXCHANGE_LABELS[buyExchange]} ➔ ${EXCHANGE_LABELS[sellExchange]})`,
+        capital: `${pairInfo.currency} ${capital.toFixed(2)}`,
+        compra: p1Price.toFixed(2),
+        venta: resPayload.precioPaso2,
+        neto: `${resPayload.monedaGanancia} ${resPayload.retornoFinal}`,
         spread: resPayload.spreadNetoPorcentaje
       }]);
     }
@@ -248,9 +259,9 @@ export default function Dashboard() {
         </div>
 
         <div style={{ backgroundColor: 'rgba(0, 173, 181, 0.08)', borderLeft: '4px solid #00ADB5', padding: '12px', margin: '15px 0', borderRadius: '4px', fontSize: '13px', color: 'var(--text-muted)' }}>
-          <strong>💡 ¿Cómo funciona?</strong><br/>
-          Simula la compra de moneda local (Bolívares, Pesos, etc.) usando USDT en una plataforma P2P, y luego la reventa en otra plataforma a un precio mayor. La diferencia entre el precio de compra y venta es tu ganancia.
-          <strong>Ejemplo:</strong> Compras USDT a 39.50 Bs en El Dorado (usando Pago Móvil), y vendes a 40.00 Bs en Binance P2P (usando Pago Móvil). Ganancia: +1.27%.
+          <strong>💡 Lógica Maker P2P</strong><br/>
+          Esta calculadora está diseñada estrictamente para comerciantes P2P (Makers). El flujo lógico es: <strong>Moneda Local ➔ USDT ➔ Moneda Local</strong>.<br/>
+          Pones anuncios para comprar USDT barato con tu banco, y luego anuncios para vender esos USDT más caro a tu banco. Tu capital inicial debe ser tu Moneda Local.
         </div>
 
         {savedRoutes.length > 0 && (
@@ -271,21 +282,17 @@ export default function Dashboard() {
 
         <div className="calc-mode-switch-container">
           <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} onClick={() => setCalcStrategy('manual')}>Modo Manual</button>
-          <button className={`mode-switch-btn ${calcStrategy === 'objetivo' ? 'active' : ''}`} onClick={() => setCalcStrategy('objetivo')}>Modo Objetivo %</button>
-        </div>
-
         <div className="input-group">
-          <label>Par de Moneda Local</label>
-          <select value={selectedPair} onChange={(e) => { setSelectedPair(e.target.value); setBuyPrice(''); setSellPrice(''); setResult(null); }}>
-            {P2P_PAIRS.map(p => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
+          <label>Capital Inicial (En tu banco)</label>
+          <div className="input-group-wrapper">
+            <input type="number" placeholder="Ej: 100000" step="any" value={capital} onChange={(e) => setCapital(parseFloat(e.target.value))} />
+            <span className="currency-tag">{pairInfo.currency}</span>
+          </div>
         </div>
 
         <div className="input-grid-2">
           <div className="input-group">
-            <label>Exchange de Compra</label>
+            <label>Exchange (Paso 1: Comprar USDT)</label>
             <select value={buyExchange} onChange={(e) => setBuyExchange(e.target.value)}>
               {EXCHANGES.map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -293,7 +300,7 @@ export default function Dashboard() {
             </select>
           </div>
           <div className="input-group">
-            <label>Método de Pago (Compra)</label>
+            <label>Método de Pago (Paso 1)</label>
             <select value={buyMethod} onChange={(e) => setBuyMethod(e.target.value)}>
               {PAYMENT_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -304,7 +311,7 @@ export default function Dashboard() {
 
         <div className="input-grid-2">
           <div className="input-group">
-            <label>Exchange de Venta</label>
+            <label>Exchange (Paso 2: Vender USDT)</label>
             <select value={sellExchange} onChange={(e) => setSellExchange(e.target.value)}>
               {EXCHANGES.map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -312,7 +319,7 @@ export default function Dashboard() {
             </select>
           </div>
           <div className="input-group">
-            <label>Método de Pago (Venta)</label>
+            <label>Método de Pago (Paso 2)</label>
             <select value={sellMethod} onChange={(e) => setSellMethod(e.target.value)}>
               {PAYMENT_METHODS.filter(m => !('currencies' in m) || (m as any).currencies.includes(pairInfo.currency)).map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -321,18 +328,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="input-group">
-          <label>Capital de Trabajo</label>
-          <div className="input-group-wrapper">
-            <input type="number" placeholder="100" step="any" value={capital} onChange={(e) => setCapital(parseFloat(e.target.value))} />
-            <span className="currency-tag">USDT</span>
-          </div>
+        <div className="calc-mode-switch-container" style={{ margin: '10px 0' }}>
+          <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} onClick={() => setCalcStrategy('manual')}>Modo Manual</button>
+          <button className={`mode-switch-btn ${calcStrategy === 'objetivo' ? 'active' : ''}`} onClick={() => setCalcStrategy('objetivo')}>Modo Objetivo %</button>
         </div>
 
         <div className="input-grid-2">
           <div className="input-group">
             <label>
-              Precio Compra ({pairInfo.currency} por 1 USDT)
+              Precio (Paso 1: Compra USDT)
               {showBuyLive && (
                 <span className="live-api-btn" onClick={() => fetchLivePrice('compra')} title="Extraer precio real de Binance P2P">
                   {liveStatusBuy || '🔄 En vivo (Binance)'}
@@ -345,7 +349,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="input-group">
-            <label>Comisión Plataforma Compra</label>
+            <label>Comisión de Plataforma (Paso 1)</label>
             <div className="input-group-wrapper">
               <input type="number" placeholder="0" step="any" value={buyFee} onChange={(e) => setBuyFee(parseFloat(e.target.value))} />
               <span className="currency-tag">%</span>
@@ -357,7 +361,7 @@ export default function Dashboard() {
           {calcStrategy === 'manual' ? (
             <div className="input-group">
               <label>
-                Precio Venta ({pairInfo.currency} por 1 USDT)
+                Precio (Paso 2: Venta USDT)
                 {showSellLive && (
                   <span className="live-api-btn" onClick={() => fetchLivePrice('venta')} title="Extraer precio real de Binance P2P">
                     {liveStatusSell || '🔄 En vivo (Binance)'}
@@ -371,7 +375,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="input-group">
-              <label>Margen Objetivo Deseado</label>
+              <label>Margen Objetivo (Ej: 2.0%)</label>
               <div className="input-group-wrapper">
                 <input type="number" placeholder="2.0" step="any" value={targetMargin} onChange={(e) => setTargetMargin(parseFloat(e.target.value))} />
                 <span className="currency-tag">%</span>
@@ -379,7 +383,7 @@ export default function Dashboard() {
             </div>
           )}
           <div className="input-group">
-            <label>Comisión Plataforma Venta</label>
+            <label>Comisión de Plataforma (Paso 2)</label>
             <div className="input-group-wrapper">
               <input type="number" placeholder="0" step="any" value={sellFee} onChange={(e) => setSellFee(parseFloat(e.target.value))} />
               <span className="currency-tag">%</span>
@@ -387,49 +391,43 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <button className="btn-primary" onClick={calculateP2P}>Calcular Ganancia P2P</button>
-      </div>
+        <button className="btn-primary" style={{ width: '100%', padding: '15px', marginTop: '10px' }} onClick={calculateP2P}>
+          📊 CALCULAR OPORTUNIDAD P2P (MAKER)
+        </button>
 
-      <div className="calc-panel-box">
-        <div className="panel-title-bar"><span>📊</span> Desglose de Retorno Estimado</div>
-        <div className="results-list-box">
-          <div className="result-row-item">
-            <span className="label-text">Capital Invertido</span>
-            <span className="value-num" style={{ color: '#fff' }}>
-              USDT {capital ? capital.toFixed(2) : '0.00'}
-            </span>
+        {result && (
+          <div className={`result-card ${result.isHighlyProfitable ? 'highly-profitable' : result.isPositive ? 'positive' : 'negative'}`}>
+            <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+              Resultado de Arbitraje P2P Maker
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+              <div className="stat-item">
+                <div className="stat-label">Retorno Final</div>
+                <div className="stat-value">{result.retornoFinal} <span style={{fontSize: '0.6em'}}>{result.monedaGanancia}</span></div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-label">Ganancia Neta</div>
+                <div className="stat-value" style={{ color: result.isPositive ? 'var(--success)' : 'var(--danger)' }}>
+                  {result.isPositive ? '+' : ''}{result.ganancia} <span style={{fontSize: '0.6em'}}>{result.monedaGanancia}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--text-muted)' }}>
+              <span>Spread Neto Final: <strong style={{ color: result.isPositive ? 'var(--success)' : 'var(--danger)' }}>{result.spreadNetoPorcentaje}%</strong></span>
+              <span>USDT Adquiridos: <strong>{result.cantidadUSDT} USDT</strong></span>
+            </div>
+
+            {calcStrategy === 'objetivo' && (
+              <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '4px', textAlign: 'center', marginTop: '10px' }}>
+                <div className="stat-label">Precio Sugerido para el Paso 2 (Venta USDT)</div>
+                <div className="stat-value" style={{ color: 'var(--primary)' }}>{result.precioPaso2} <span style={{fontSize: '0.6em'}}>{pairInfo.currency}</span></div>
+              </div>
+            )}
           </div>
-          <div className="result-row-item">
-            <span className="label-text">Moneda Local Obtenida</span>
-            <span className="value-num" style={{ color: '#fff' }}>
-              {result ? `${result.monedaLocal} ${result.cantidadMonedaLocal}` : `${pairInfo.currency} 0.00`}
-            </span>
-          </div>
-          <div className="result-row-item">
-            <span className="label-text">Precio de Venta Utilizado</span>
-            <span className="value-num" style={{ color: '#fff' }}>
-              {result ? `${result.monedaLocal} ${result.precioVenta}` : '0.00'}
-            </span>
-          </div>
-          <div className="result-row-item highlight-box">
-            <span className="label-text" style={{ color: 'var(--primary)', fontWeight: 700 }}>Retorno Neto en USDT</span>
-            <span className="value-num">
-              {result ? `USDT ${result.retornoUSDT}` : 'USDT 0.00'}
-            </span>
-          </div>
-          <div className="result-row-item">
-            <span className="label-text">Ganancia / Pérdida</span>
-            <span className="value-num" style={{ color: result ? (result.isPositive ? 'var(--success)' : 'var(--danger)') : 'var(--success)', fontWeight: 700 }}>
-              {result ? `${parseFloat(result.gananciaUSDT) >= 0 ? '+' : ''}${result.gananciaUSDT} USDT` : '+0.00 USDT'}
-            </span>
-          </div>
-          <div className="result-row-item">
-            <span className="label-text">Spread Neto Final</span>
-            <span className="value-num" style={{ color: result ? (result.isPositive ? 'var(--success)' : 'var(--danger)') : 'var(--success)', fontWeight: 700 }}>
-              {result ? `${result.spreadNetoPorcentaje}%` : '0.00%'}
-            </span>
-          </div>
-        </div>
+        )}
+      </div>
 
         {result && (
           <div className="margin-status-alert" style={{
@@ -494,11 +492,11 @@ export default function Dashboard() {
                 const formatNum = (val: string | number) => parseFloat(val.toString()).toString();
 
                 const rows = [
-                  ['Capital invertido', `USDT ${formatNum(capital)}`],
-                  [`Precio Compra (${pairInfo.currency})`, `${pairInfo.currency} ${formatNum(buyPrice)}`],
-                  [`Precio Venta (${pairInfo.currency})`, `${pairInfo.currency} ${formatNum(result.precioVenta)}`],
-                  ['Moneda Local Obtenida', `${pairInfo.currency} ${formatNum(result.cantidadMonedaLocal)}`],
-                  ['Retorno Neto', `USDT ${formatNum(result.retornoUSDT)}`],
+                  ['Capital invertido', `${pairInfo.currency} ${formatNum(capital)}`],
+                  [`Precio Compra (${pairInfo.currency}/USDT)`, `${formatNum(buyPrice)}`],
+                  [`Precio Venta (${pairInfo.currency}/USDT)`, `${formatNum(result.precioPaso2)}`],
+                  ['USDT Adquiridos en Paso 1', `USDT ${formatNum(result.cantidadUSDT)}`],
+                  ['Retorno Bruto', `${pairInfo.currency} ${formatNum(result.retornoFinal)}`],
                 ];
 
                 let y = 135;
@@ -521,11 +519,11 @@ export default function Dashboard() {
 
                 ctx.fillStyle = '#00ADB5';
                 ctx.font = 'bold 16px Inter, Arial, sans-serif';
-                ctx.fillText('Ganancia Neta', 35, y + 41);
+                ctx.fillText('Ganancia Neta P2P', 35, y + 41);
                 ctx.fillStyle = result.isPositive ? '#10B981' : '#EF4444';
                 ctx.font = 'bold 22px Inter, Arial, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText(`${formatNum(result.gananciaUSDT)} USDT (${formatNum(result.spreadNetoPorcentaje)}%)`, 565, y + 43);
+                ctx.fillText(`${formatNum(result.ganancia)} ${pairInfo.currency} (${formatNum(result.spreadNetoPorcentaje)}%)`, 565, y + 43);
                 ctx.textAlign = 'left';
 
                 ctx.fillStyle = '#4B5563';
@@ -540,8 +538,8 @@ export default function Dashboard() {
                   if (navigator.share && navigator.canShare?.({ files: [file] })) {
                     try {
                       await navigator.share({
-                        title: 'CriptoCal — Resultado P2P',
-                        text: `Ganancia de ${formatNum(result.gananciaUSDT)} USDT (${formatNum(result.spreadNetoPorcentaje)}%) en ${pairInfo.currency}. Calculado con criptocal.vercel.app`,
+                        title: 'CriptoCal — Resultado P2P Maker',
+                        text: `Ganancia de ${formatNum(result.ganancia)} ${pairInfo.currency} (${formatNum(result.spreadNetoPorcentaje)}%) haciendo arbitraje. Calculado con criptocal.vercel.app`,
                         files: [file],
                       });
                     } catch { /* user cancelled */ }
