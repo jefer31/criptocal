@@ -338,11 +338,11 @@ export default function Dashboard() {
         </div>
 
         <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
             <h4 style={{ margin: 0, color: 'var(--primary)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               💰 Paso 2: Vender USDT (Tu anuncio)
             </h4>
-            <div className="calc-mode-switch-container" style={{ margin: 0 }}>
+            <div className="calc-mode-switch-container" style={{ margin: 0, width: '100%', maxWidth: 'max-content' }}>
               <button className={`mode-switch-btn ${calcStrategy === 'manual' ? 'active' : ''}`} style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => setCalcStrategy('manual')}>Manual</button>
               <button className={`mode-switch-btn ${calcStrategy === 'objetivo' ? 'active' : ''}`} style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => setCalcStrategy('objetivo')}>Objetivo %</button>
             </div>
@@ -412,7 +412,7 @@ export default function Dashboard() {
               Resultado de Arbitraje P2P Maker
             </h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '15px' }}>
               <div className="stat-item">
                 <div className="stat-label">Retorno Final</div>
                 <div className="stat-value">{result.retornoFinal} <span style={{fontSize: '0.6em'}}>{result.monedaGanancia}</span></div>
@@ -425,7 +425,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '10px', fontSize: '13px', color: 'var(--text-muted)' }}>
               <span>Spread Neto Final: <strong style={{ color: result.isPositive ? 'var(--success)' : 'var(--danger)' }}>{result.spreadNetoPorcentaje}%</strong></span>
               <span>USDT Adquiridos: <strong>{result.cantidadUSDT} USDT</strong></span>
             </div>
