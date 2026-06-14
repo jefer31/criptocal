@@ -55,6 +55,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const isVip = user.email?.toLowerCase() === 'jefersonlezama8@gmail.com';
+    const isPremium = user.user_metadata?.is_premium;
+    
+    if (!isVip && !isPremium) {
+      return NextResponse.json({ error: 'Premium required to save alerts' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { pair, exchange_buy, exchange_sell, min_spread, telegram_chat_id, is_active } = body;
 

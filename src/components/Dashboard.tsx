@@ -28,16 +28,16 @@ const P2P_PAIRS = [
 ];
 
 const EXCHANGES = [
-  { value: 'binance_p2p', label: 'Binance P2P' },
-  { value: 'bybit_p2p', label: 'Bybit P2P' },
-  { value: 'bitget_p2p', label: 'Bitget P2P' },
-  { value: 'okx_p2p', label: 'OKX P2P' },
-  { value: 'mexc_p2p', label: 'MEXC P2P' },
-  { value: 'eldorado', label: 'El Dorado' },
-  { value: 'airtm', label: 'AirTM' },
-  { value: 'localbitcoins', label: 'LocalBitcoins' },
-  { value: 'paxful', label: 'Paxful' },
-  { value: 'otro', label: 'Otro (Manual)' }
+  { value: 'binance_p2p', label: '🟢 Binance P2P (API en Vivo)' },
+  { value: 'bybit_p2p', label: '⚙️ Bybit P2P (Manual)' },
+  { value: 'bitget_p2p', label: '⚙️ Bitget P2P (Manual)' },
+  { value: 'okx_p2p', label: '⚙️ OKX P2P (Manual)' },
+  { value: 'mexc_p2p', label: '⚙️ MEXC P2P (Manual)' },
+  { value: 'eldorado', label: '⚙️ El Dorado (Manual)' },
+  { value: 'airtm', label: '⚙️ AirTM (Manual)' },
+  { value: 'localbitcoins', label: '⚙️ LocalBitcoins (Manual)' },
+  { value: 'paxful', label: '⚙️ Paxful (Manual)' },
+  { value: 'otro', label: '⚙️ Otro (Manual)' }
 ];
 
 const PAYMENT_METHODS = [

@@ -41,10 +41,29 @@ export default function DynamicFiatRates({ fiatCurrency }: Props) {
               subLabel: 'Dólar Blue', subVal: dataBlue.venta + ' ARS',
             });
           }
-        } else if (fiatCurrency === 'COP') {
-           // Fallback/mock for Colombia since there is no standard free no-cors API for TRM easily available 
-           // In production, you'd route this through your NextJS backend.
-           setRates(null);
+        } else if (['COP', 'MXN', 'PEN', 'BRL', 'CLP', 'EUR'].includes(fiatCurrency)) {
+          // Free API fallback for other currencies against USD
+          const res = await fetch('https://open.er-api.com/v6/latest/USD');
+          const data = await res.json();
+          
+          if (active && data && data.rates && data.rates[fiatCurrency]) {
+            const rate = data.rates[fiatCurrency];
+            
+            const countryMap: Record<string, string> = {
+              'COP': '🇨🇴 Colombia',
+              'MXN': '🇲🇽 México',
+              'PEN': '🇵🇪 Perú',
+              'BRL': '🇧🇷 Brasil',
+              'CLP': '🇨🇱 Chile',
+              'EUR': '🇪🇺 Europa'
+            };
+            
+            setRates({
+              country: countryMap[fiatCurrency],
+              mainLabel: 'Tasa Oficial (vs USD)', mainVal: parseFloat(rate).toFixed(2) + ' ' + fiatCurrency,
+              subLabel: 'Fuente', subVal: 'Mercado Global'
+            });
+          }
         } else {
           setRates(null);
         }
