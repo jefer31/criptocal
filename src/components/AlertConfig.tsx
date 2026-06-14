@@ -124,7 +124,7 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
   if (loading) return <div className="p-8 text-center text-gray-400">Cargando configuración...</div>;
   if (!userId) return <div className="p-8 text-center text-red-400">⚠️ Necesitas iniciar sesión para configurar alertas.</div>;
 
-  const isVipAdmin = userEmail?.toLowerCase() === 'jefersonlezama8@gmail.com';
+  const isVipAdmin = userEmail?.trim().toLowerCase() === 'jefersonlezama8@gmail.com';
   
   if (!isPremium && !isVipAdmin) {
     return (
@@ -134,6 +134,9 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
           <h3 style={{ marginBottom: '10px' }}>Función PRO: Alertas Automáticas por Telegram</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '20px', lineHeight: '1.6' }}>
             Con PRO, nuestros servidores escanean los exchanges 24/7 y te envían alertas instantáneas a Telegram cuando detectan spreads rentables.
+          </p>
+          <p style={{ color: '#ff4444', marginBottom: '20px', fontSize: '12px' }}>
+            (Debug: Tu correo actual es "{userEmail}" y VIP es "{isVipAdmin ? 'Sí' : 'No'}")
           </p>
           <button className="btn-primary" onClick={() => onUpgrade?.()}>
             🚀 Desbloquear Alertas PRO
