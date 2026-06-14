@@ -310,6 +310,7 @@ export default function Dashboard() {
               <option value="USDT">USDT</option>
               <option value="BTC">Bitcoin (BTC)</option>
               <option value="ETH">Ethereum (ETH)</option>
+              <option value="BNB">Binance Coin (BNB)</option>
               <option value="FDUSD">FDUSD</option>
               <option value="USDC">USDC</option>
             </select>
