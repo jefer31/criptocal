@@ -590,8 +590,7 @@ export default function Dashboard() {
               📤 Compartir Resultado
             </button>
           </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
