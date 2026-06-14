@@ -17,6 +17,7 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Form states
   const [pair, setPair] = useState('BTCUSDT');
@@ -34,6 +35,7 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
         return;
       }
       setUserId(session.user.id);
+      setUserEmail(session.user.email ?? null);
 
       // Fetch config from Supabase via our API
       try {
@@ -62,7 +64,8 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
   }, []);
 
   const handleSave = async () => {
-    if (!isPremium) {
+    const isVipAdminSave = userEmail?.toLowerCase() === 'jefersonlezama8@gmail.com';
+    if (!isPremium && !isVipAdminSave) {
       alert('⚠️ Las alertas automáticas son una función PRO. Actualiza tu plan para activarlas.');
       onUpgrade?.();
       return;
@@ -121,7 +124,9 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
   if (loading) return <div className="p-8 text-center text-gray-400">Cargando configuración...</div>;
   if (!userId) return <div className="p-8 text-center text-red-400">⚠️ Necesitas iniciar sesión para configurar alertas.</div>;
 
-  if (!isPremium) {
+  const isVipAdmin = userEmail?.toLowerCase() === 'jefersonlezama8@gmail.com';
+  
+  if (!isPremium && !isVipAdmin) {
     return (
       <div className="standard-calc">
         <div className="calc-panel-box" style={{ textAlign: 'center', padding: '40px 20px' }}>
