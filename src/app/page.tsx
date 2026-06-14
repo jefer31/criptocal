@@ -82,7 +82,7 @@ export default function Home() {
       setUser(sessionUser);
       
       // Check if user is premium — if so, never block
-      if (sessionUser.user_metadata?.is_premium || sessionUser.email === 'jefersonlezama8@gmail.com') {
+      if (sessionUser.user_metadata?.is_premium || sessionUser.email?.toLowerCase() === 'jefersonlezama8@gmail.com') {
         setShowTrialExpiredModal(false);
         return;
       }
@@ -226,7 +226,7 @@ export default function Home() {
 
   // Un usuario es "gratis" si NO ha iniciado sesión, O si inició sesión pero no es PRO.
   // Esto permite que el bot verificador de A-Ads (que no inicia sesión) vea el anuncio en la página.
-  const isVipAdmin = user?.email === 'jefersonlezama8@gmail.com';
+  const isVipAdmin = user?.email?.toLowerCase() === 'jefersonlezama8@gmail.com';
   const isFreeUser = !user || (user && !user.user_metadata?.is_premium && !isVipAdmin);
 
   return (
