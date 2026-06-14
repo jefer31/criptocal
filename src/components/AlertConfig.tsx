@@ -12,7 +12,7 @@ interface AlertConfigType {
   is_active: boolean;
 }
 
-export default function AlertConfig() {
+export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremium?: boolean; onUpgrade?: () => void }) {
   const [config, setConfig] = useState<AlertConfigType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,7 +22,7 @@ export default function AlertConfig() {
   const [pair, setPair] = useState('BTCUSDT');
   const [exchangeBuy, setExchangeBuy] = useState('binance');
   const [exchangeSell, setExchangeSell] = useState('bybit');
-  const [minSpread, setMinSpread] = useState(-10);
+  const [minSpread, setMinSpread] = useState(0.5);
   const [chatId, setChatId] = useState('');
   const [isActive, setIsActive] = useState(true);
 
@@ -62,8 +62,21 @@ export default function AlertConfig() {
   }, []);
 
   const handleSave = async () => {
+    if (!isPremium) {
+      alert('⚠️ Las alertas automáticas son una función PRO. Actualiza tu plan para activarlas.');
+      onUpgrade?.();
+      return;
+    }
     if (!chatId) {
       alert('⚠️ Necesitas ingresar tu Chat ID de Telegram para recibir alertas.');
+      return;
+    }
+    if (exchangeBuy === exchangeSell) {
+      alert('⚠️ El exchange de compra y el de venta deben ser diferentes para que el arbitraje tenga sentido.');
+      return;
+    }
+    if (minSpread < 0) {
+      alert('⚠️ El spread mínimo debe ser un porcentaje positivo (ej: 0.5%).');
       return;
     }
 
@@ -107,6 +120,23 @@ export default function AlertConfig() {
 
   if (loading) return <div className="p-8 text-center text-gray-400">Cargando configuración...</div>;
   if (!userId) return <div className="p-8 text-center text-red-400">⚠️ Necesitas iniciar sesión para configurar alertas.</div>;
+
+  if (!isPremium) {
+    return (
+      <div className="standard-calc">
+        <div className="calc-panel-box" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '15px' }}>🔒</div>
+          <h3 style={{ marginBottom: '10px' }}>Función PRO: Alertas Automáticas por Telegram</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', lineHeight: '1.6' }}>
+            Con PRO, nuestros servidores escanean los exchanges 24/7 y te envían alertas instantáneas a Telegram cuando detectan spreads rentables.
+          </p>
+          <button className="btn-primary" onClick={() => onUpgrade?.()}>
+            🚀 Desbloquear Alertas PRO
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="standard-calc">
@@ -161,6 +191,8 @@ export default function AlertConfig() {
               <option value="bitget">Bitget</option>
               <option value="kucoin">KuCoin</option>
               <option value="mexc">MEXC</option>
+              <option value="gateio">Gate.io</option>
+              <option value="kraken">Kraken</option>
             </select>
           </div>
           <div className="input-group">

@@ -66,11 +66,25 @@ export default function MathCalculator() {
     }
   };
 
+  const safeMathEval = (expr: string): number => {
+    // SECURITY: Only allow digits, operators, dots, spaces, and parentheses
+    const sanitized = expr.replace(/\s/g, '');
+    if (!/^[0-9+\-*/.()]+$/.test(sanitized)) {
+      throw new Error('Expresión inválida');
+    }
+    // Prevent empty parentheses or double operators
+    if (/\(\)/.test(sanitized) || /[+\-*/]{2,}/.test(sanitized.replace(/[+\-](?=[0-9(])/g, ''))) {
+      throw new Error('Sintaxis inválida');
+    }
+    // Use Function with the sanitized expression — now safe because we verified it contains ONLY math characters
+    return new Function(`"use strict"; return (${sanitized})`)() as number;
+  };
+
   const executeMathCalcResult = () => {
     if (!mathExpression) return;
     try {
-      // eslint-disable-next-line no-new-func
-      const result = new Function(`return (${mathExpression})`)();
+      const result = safeMathEval(mathExpression);
+      if (!isFinite(result)) throw new Error('Resultado infinito');
       const resultStr = String(result);
 
       setHistoryDisplay(mathExpression + ' =');

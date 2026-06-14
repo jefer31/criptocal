@@ -207,6 +207,11 @@ export default function SpotCalculator() {
       return;
     }
 
+    if (buyExchange === sellExchange) {
+      alert('⚠️ El exchange de compra y venta deben ser diferentes para realizar un arbitraje Spot.');
+      return;
+    }
+
     const capitalTrasCompra = capital * (1 - (buyFee / 100));
     let totalTokensAdquiridos = capitalTrasCompra / bPrice;
 

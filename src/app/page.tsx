@@ -62,6 +62,15 @@ export default function Home() {
           setShowTrialExpiredModal(true);
         }
       }
+
+      // Check for payment success
+      if (window.location.search.includes('payment=success')) {
+        alert('🎉 ¡Pago confirmado! Tu cuenta está siendo actualizada a PRO.');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        // Force session refresh to get new user_metadata
+        supabase.auth.refreshSession();
+      }
     }
 
     const checkAndSetTrial = async (sessionUser: any) => {
@@ -71,18 +80,38 @@ export default function Home() {
       }
       
       setUser(sessionUser);
-      setShowTrialExpiredModal(false); // If logged in, never show the anonymous trial block
       
-      // Si es un usuario nuevo y no tiene configurado el fin de prueba, le damos 7 días
-      if (!sessionUser.user_metadata?.trial_ends_at) {
-        const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        const { data: updatedUser } = await supabase.auth.updateUser({
-          data: { trial_ends_at: trialEndsAt, is_premium: false }
-        });
-        if (updatedUser?.user) {
-          setUser(updatedUser.user);
+      // Check if user is premium — if so, never block
+      if (sessionUser.user_metadata?.is_premium) {
+        setShowTrialExpiredModal(false);
+        return;
+      }
+
+      // If user has a trial_ends_at, check if it expired
+      if (sessionUser.user_metadata?.trial_ends_at) {
+        const trialEnd = new Date(sessionUser.user_metadata.trial_ends_at).getTime();
+        if (Date.now() > trialEnd) {
+          // Trial expired and not premium — show upgrade modal
+          setShowTrialExpiredModal(true);
+          return;
+        } else {
+          const daysLeft = Math.max(0, Math.ceil((trialEnd - Date.now()) / (1000 * 60 * 60 * 24)));
+          setTrialDaysLeft(daysLeft);
+          setShowTrialExpiredModal(false);
+          return;
         }
       }
+      
+      // New user — set 7 day trial
+      const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: updatedUser } = await supabase.auth.updateUser({
+        data: { trial_ends_at: trialEndsAt, is_premium: false }
+      });
+      if (updatedUser?.user) {
+        setUser(updatedUser.user);
+      }
+      setTrialDaysLeft(7);
+      setShowTrialExpiredModal(false);
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -229,16 +258,27 @@ export default function Home() {
 <div className="terms-modal-overlay" style={{ zIndex: 9999, display: 'flex', background: 'rgba(10, 10, 26, 0.95)', backdropFilter: 'blur(10px)' }}>
     <div className="terms-modal-card" style={{ maxWidth: '500px', textAlign: 'center', padding: '40px 30px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
-        <h2 style={{ fontSize: '24px', marginBottom: '15px', color: 'var(--text-color)' }}>Tu prueba de 7 días ha finalizado</h2>
+        <h2 style={{ fontSize: '24px', marginBottom: '15px', color: 'var(--text-color)' }}>{user ? 'Tu prueba PRO ha finalizado' : 'Tu prueba de 7 días ha finalizado'}</h2>
         <p style={{ color: 'var(--text-muted)', marginBottom: '30px', lineHeight: '1.6' }}>
-            Esperamos que hayas descubierto grandes oportunidades de arbitraje. Para seguir utilizando CriptoCal y acceder a tus historiales, debes crear una cuenta gratuita.
+            {user 
+              ? 'Actualiza a PRO para seguir usando todas las funciones de CriptoCal, incluyendo alertas por Telegram y sin anuncios.'
+              : 'Esperamos que hayas descubierto grandes oportunidades de arbitraje. Para seguir utilizando CriptoCal y acceder a tus historiales, debes crear una cuenta gratuita.'
+            }
         </p>
-        <button className="btn-primary" onClick={() => { setShowAuthModal(true); setIsLoginMode(false); }} style={{ width: '100%', marginBottom: '15px', padding: '15px' }}>
-            Registrarse Gratis
-        </button>
-        <button className="btn-secondary" onClick={() => { setShowAuthModal(true); setIsLoginMode(true); }} style={{ width: '100%', padding: '15px' }}>
-            Ya tengo una cuenta
-        </button>
+        {user ? (
+          <button className="btn-primary" onClick={() => { setShowPricingModal(true); setShowTrialExpiredModal(false); }} style={{ width: '100%', padding: '15px' }}>
+            🚀 Actualizar a PRO
+          </button>
+        ) : (
+          <>
+          <button className="btn-primary" onClick={() => { setShowAuthModal(true); setIsLoginMode(false); }} style={{ width: '100%', marginBottom: '15px', padding: '15px' }}>
+              Registrarse Gratis
+          </button>
+          <button className="btn-secondary" onClick={() => { setShowAuthModal(true); setIsLoginMode(true); }} style={{ width: '100%', padding: '15px' }}>
+              Ya tengo una cuenta
+          </button>
+          </>
+        )}
     </div>
 </div>
 )}
@@ -455,23 +495,22 @@ export default function Home() {
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
-            <Dashboard />
+            {activeTab === 'calculadora' && <Dashboard />}
         </div>
 
         <div id="spot-tab" className={`tab-content ${activeTab === 'spot' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
-            <SpreadScanner />
-            <SpotCalculator />
+            {activeTab === 'spot' && <><SpreadScanner /><SpotCalculator /></>}
         </div>
 
         <div id="historial-tab" className={`tab-content ${activeTab === 'historial' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
-            <HistoryTable />
+            {activeTab === 'historial' && <HistoryTable />}
         </div>
 
         <div id="matematica-tab" className={`tab-content ${activeTab === 'matematica' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
-            <MathCalculator />
+            {activeTab === 'matematica' && <MathCalculator />}
         </div>
 
         {showPricingModal && (
@@ -479,12 +518,12 @@ export default function Home() {
         )}
 
         <div id="perfil-tab" className={`tab-content ${activeTab === 'perfil' ? 'active' : ''}`}>
-            <ProfileSettings />
+            {activeTab === 'perfil' && <ProfileSettings />}
         </div>
 
         <div id="alertas-tab" className={`tab-content ${activeTab === 'alertas' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
-            <AlertConfig />
+            {activeTab === 'alertas' && <AlertConfig isPremium={!isFreeUser} onUpgrade={() => setShowPricingModal(true)} />}
         </div>
 
     </div>
