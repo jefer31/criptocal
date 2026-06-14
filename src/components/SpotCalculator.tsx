@@ -207,7 +207,7 @@ export default function SpotCalculator() {
       return;
     }
 
-    if (buyExchange === sellExchange) {
+    if (exchangeSource === exchangeTarget) {
       alert('⚠️ El exchange de compra y venta deben ser diferentes para realizar un arbitraje Spot.');
       return;
     }
