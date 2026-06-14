@@ -57,10 +57,9 @@ export default function Home() {
         const daysLeft = Math.max(0, 7 - daysElapsed);
         setTrialDaysLeft(daysLeft);
         
-        // Block if 7 days passed AND user is not logged in
-        if (daysLeft === 0) {
-          setShowTrialExpiredModal(true);
-        }
+        // NOTE: Do NOT set showTrialExpiredModal here.
+        // Let checkAndSetTrial handle it after verifying the session,
+        // so VIP admins and premium users are never blocked.
       }
 
       // Check for payment success
@@ -76,6 +75,16 @@ export default function Home() {
     const checkAndSetTrial = async (sessionUser: any) => {
       if (!sessionUser) {
         setUser(null);
+        // No session — if localStorage trial expired, show modal
+        if (typeof window !== 'undefined') {
+          const firstVisit = localStorage.getItem('criptocal_first_visit');
+          if (firstVisit) {
+            const daysElapsed = Math.floor((Date.now() - parseInt(firstVisit, 10)) / (1000 * 60 * 60 * 24));
+            if (daysElapsed >= 7) {
+              setShowTrialExpiredModal(true);
+            }
+          }
+        }
         return;
       }
       
@@ -124,9 +133,16 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Update expired modal visibility if user logs out while time is expired
+  // Update expired modal visibility — only block non-VIP, non-premium users
   useEffect(() => {
-    if (isClient && !user && trialDaysLeft === 0) {
+    if (!isClient) return;
+    const isVip = user?.email?.toLowerCase() === 'jefersonlezama8@gmail.com';
+    const isPrem = user?.user_metadata?.is_premium;
+    if (isVip || isPrem) {
+      setShowTrialExpiredModal(false);
+      return;
+    }
+    if (!user && trialDaysLeft === 0) {
       setShowTrialExpiredModal(true);
     }
   }, [user, trialDaysLeft, isClient]);
