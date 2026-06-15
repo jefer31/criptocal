@@ -66,6 +66,23 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { pair, exchange_buy, exchange_sell, min_spread, telegram_chat_id, is_active } = body;
 
+    // Validate inputs to prevent bad data or injection
+    if (!pair || typeof pair !== 'string') {
+      return NextResponse.json({ error: 'Par inválido' }, { status: 400 });
+    }
+    if (!exchange_buy || typeof exchange_buy !== 'string') {
+      return NextResponse.json({ error: 'Exchange de compra inválido' }, { status: 400 });
+    }
+    if (!exchange_sell || typeof exchange_sell !== 'string') {
+      return NextResponse.json({ error: 'Exchange de venta inválido' }, { status: 400 });
+    }
+    if (typeof min_spread !== 'number' || isNaN(min_spread) || min_spread <= 0) {
+      return NextResponse.json({ error: 'Spread mínimo inválido' }, { status: 400 });
+    }
+    if (!telegram_chat_id || typeof telegram_chat_id !== 'string') {
+      return NextResponse.json({ error: 'Chat ID de Telegram inválido' }, { status: 400 });
+    }
+
     // Usamos el admin para el upsert y así evitar el error de "violates row-level security policy"
     const { data, error } = await supabaseAdmin
       .from('user_alerts')

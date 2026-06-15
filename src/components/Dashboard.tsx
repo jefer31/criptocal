@@ -70,7 +70,7 @@ export default function Dashboard() {
   const [buyMethod, setBuyMethod] = useState('pago_movil');
   const [sellExchange, setSellExchange] = useState('binance_p2p');
   const [sellMethod, setSellMethod] = useState<string>('pago_movil');
-  const [capital, setCapital] = useState(100);
+  const [capital, setCapital] = useState<number | ''>(100);
   
   // Crypto Asset State
   const [cryptoAsset, setCryptoAsset] = useState<string>('USDT');
@@ -78,9 +78,9 @@ export default function Dashboard() {
   const [buyPrice, setBuyPrice] = useState('');
   const [sellPrice, setSellPrice] = useState('');
 
-  const [buyFee, setBuyFee] = useState(0);
-  const [sellFee, setSellFee] = useState(0);
-  const [targetMargin, setTargetMargin] = useState(2.0);
+  const [buyFee, setBuyFee] = useState<number | ''>(0);
+  const [sellFee, setSellFee] = useState<number | ''>(0);
+  const [targetMargin, setTargetMargin] = useState<number | ''>(2.0);
 
   const [liveStatusBuy, setLiveStatusBuy] = useState('');
   const [liveStatusSell, setLiveStatusSell] = useState('');
@@ -181,7 +181,8 @@ export default function Dashboard() {
 
   const calculateP2P = async () => {
     const p1Price = parseFloat(buyPrice);
-    if (isNaN(capital) || capital <= 0 || isNaN(p1Price) || p1Price <= 0) {
+    const numCapital = typeof capital === 'string' ? parseFloat(capital) : capital;
+    if (isNaN(numCapital) || numCapital <= 0 || isNaN(p1Price) || p1Price <= 0) {
       alert('⚠️ Por favor ingrese valores numéricos válidos en el Paso 1.');
       return;
     }
@@ -193,16 +194,18 @@ export default function Dashboard() {
 
     // Flujo Maker Estricto (FIAT -> CRYPTO -> FIAT)
     // Paso 1: Comprar CRYPTO con Capital en Moneda Local
-    const capitalTrasFee = capital * (1 - (buyFee / 100));
+    const numBuyFee = typeof buyFee === 'string' ? parseFloat(buyFee) || 0 : buyFee;
+    const capitalTrasFee = numCapital * (1 - (numBuyFee / 100));
     const cantidadCripto = capitalTrasFee / p1Price; // Divido Fiat / PrecioCompra = Cripto
 
     if (calcStrategy === 'manual') {
       if (isNaN(sPrice) || sPrice <= 0) return alert('⚠️ Ingrese un precio válido en el Paso 2.');
       // Paso 2: Vender CRYPTO para recuperar Moneda Local
+      const numSellFee = typeof sellFee === 'string' ? parseFloat(sellFee) || 0 : sellFee;
       const retornoBruto = cantidadCripto * sPrice; // Multiplico Cripto * PrecioVenta = Fiat
-      const retornoFinal = retornoBruto * (1 - (sellFee / 100));
-      ganancia = retornoFinal - capital;
-      spreadNetoPorcentaje = (ganancia / capital) * 100;
+      const retornoFinal = retornoBruto * (1 - (numSellFee / 100));
+      ganancia = retornoFinal - numCapital;
+      spreadNetoPorcentaje = (ganancia / numCapital) * 100;
       
       resPayload = {
         retornoFinal: retornoFinal.toFixed(2),
@@ -213,15 +216,17 @@ export default function Dashboard() {
         precioPaso2: sellPrice
       };
     } else {
-      if (isNaN(targetMargin)) return alert('⚠️ Ingrese un porcentaje válido.');
-      const retornoObjetivo = capital * (1 + (targetMargin / 100)); // Quiero X% más de Fiat
-      const retornoBrutoNecesario = retornoObjetivo / (1 - (sellFee / 100));
+      const numTargetMargin = typeof targetMargin === 'string' ? parseFloat(targetMargin) || 0 : targetMargin;
+      const numSellFee = typeof sellFee === 'string' ? parseFloat(sellFee) || 0 : sellFee;
+      if (isNaN(numTargetMargin)) return alert('⚠️ Ingrese un porcentaje válido.');
+      const retornoObjetivo = numCapital * (1 + (numTargetMargin / 100)); // Quiero X% más de Fiat
+      const retornoBrutoNecesario = retornoObjetivo / (1 - (numSellFee / 100));
       const precioPaso2Sugerido = retornoBrutoNecesario / cantidadCripto;
       setSellPrice(precioPaso2Sugerido.toFixed(2));
-      spreadNetoPorcentaje = targetMargin;
+      spreadNetoPorcentaje = numTargetMargin;
       resPayload = {
         retornoFinal: retornoObjetivo.toFixed(2),
-        ganancia: (retornoObjetivo - capital).toFixed(2),
+        ganancia: (retornoObjetivo - numCapital).toFixed(2),
         monedaGanancia: pairInfo.currency,
         cantidadCripto: cantidadCripto.toFixed(8),
         spreadNetoPorcentaje: spreadNetoPorcentaje.toFixed(2),
@@ -241,7 +246,7 @@ export default function Dashboard() {
         user_id: session.user.id,
         fecha: new Date().toLocaleString(),
         estrategia: `P2P Maker ${pairInfo.currency} (${EXCHANGE_LABELS[buyExchange]} ➔ ${EXCHANGE_LABELS[sellExchange]})`,
-        capital: `${pairInfo.currency} ${capital.toFixed(2)}`,
+        capital: `${pairInfo.currency} ${numCapital.toFixed(2)}`,
         compra: p1Price.toFixed(2),
         venta: resPayload.precioPaso2,
         neto: `${resPayload.monedaGanancia} ${resPayload.retornoFinal}`,
@@ -320,7 +325,7 @@ export default function Dashboard() {
         <div className="input-group" style={{ marginBottom: '20px' }}>
           <label>Capital Inicial (En tu banco local)</label>
           <div className="input-group-wrapper">
-            <input type="number" placeholder="Ej: 100000" step="any" value={capital} onChange={(e) => setCapital(parseFloat(e.target.value))} />
+              <input type="number" placeholder="Ej: 100" step="any" value={capital} onChange={(e) => setCapital(e.target.value === '' ? '' : parseFloat(e.target.value))} />
             <span className="currency-tag">{pairInfo.currency}</span>
           </div>
         </div>
@@ -363,7 +368,7 @@ export default function Dashboard() {
             <div className="input-group" style={{ marginBottom: 0 }}>
               <label>Comisión de Plataforma</label>
               <div className="input-group-wrapper">
-                <input type="number" placeholder="0" step="any" value={buyFee} onChange={(e) => setBuyFee(parseFloat(e.target.value))} />
+                <input type="number" placeholder="0" step="any" value={buyFee} onChange={(e) => setBuyFee(e.target.value === '' ? '' : parseFloat(e.target.value))} />
                 <span className="currency-tag">%</span>
               </div>
             </div>
@@ -418,7 +423,7 @@ export default function Dashboard() {
               <div className="input-group" style={{ marginBottom: 0 }}>
                 <label>Margen Objetivo (Ej: 2.0%)</label>
                 <div className="input-group-wrapper">
-                  <input type="number" placeholder="2.0" step="any" value={targetMargin} onChange={(e) => setTargetMargin(parseFloat(e.target.value))} />
+                  <input type="number" placeholder="2.0" step="any" value={targetMargin} onChange={(e) => setTargetMargin(e.target.value === '' ? '' : parseFloat(e.target.value))} />
                   <span className="currency-tag">%</span>
                 </div>
               </div>
@@ -426,7 +431,7 @@ export default function Dashboard() {
             <div className="input-group" style={{ marginBottom: 0 }}>
               <label>Comisión de Plataforma</label>
               <div className="input-group-wrapper">
-                <input type="number" placeholder="0" step="any" value={sellFee} onChange={(e) => setSellFee(parseFloat(e.target.value))} />
+                <input type="number" placeholder="0" step="any" value={sellFee} onChange={(e) => setSellFee(e.target.value === '' ? '' : parseFloat(e.target.value))} />
                 <span className="currency-tag">%</span>
               </div>
             </div>

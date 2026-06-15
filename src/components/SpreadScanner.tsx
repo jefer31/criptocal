@@ -32,7 +32,7 @@ const EXCHANGE_LABELS: Record<string, string> = {
 };
 
 async function fetchPrice(exchange: string, symbol: string): Promise<ExchangePrice | null> {
-  try {
+  const fetchDirect = async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     let url = '';
@@ -87,8 +87,23 @@ async function fetchPrice(exchange: string, symbol: string): Promise<ExchangePri
         break;
     }
     clearTimeout(timeout);
-    if (!ask || !bid || isNaN(ask) || isNaN(bid)) return null;
-    return { exchange, ask, bid };
+    return { ask, bid };
+  };
+
+  try {
+    let prices;
+    try {
+      prices = await fetchDirect();
+    } catch (e) {
+      // Proxy fallback si bloquea CORS o adblock
+      const res = await fetch(`/api/crypto?exchange=${exchange}&symbol=${symbol}&type=both`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      prices = data;
+    }
+
+    if (!prices || !prices.ask || !prices.bid || isNaN(prices.ask) || isNaN(prices.bid)) return null;
+    return { exchange, ask: prices.ask, bid: prices.bid };
   } catch {
     return null;
   }

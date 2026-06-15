@@ -43,15 +43,15 @@ export default function SpotCalculator() {
   const [cryptoAsset, setCryptoAsset] = useState('BTCUSDT');
   const [exchangeSource, setExchangeSource] = useState('binance');
   const [exchangeTarget, setExchangeTarget] = useState('bybit');
-  const [capital, setCapital] = useState(1000);
+  const [capital, setCapital] = useState<number | ''>(1000);
 
   const [buyPrice, setBuyPrice] = useState('');
   const [sellPrice, setSellPrice] = useState('');
 
-  const [buyFee, setBuyFee] = useState(0.1);
-  const [sellFee, setSellFee] = useState(0.1);
-  const [networkFee, setNetworkFee] = useState(0.0002);
-  const [targetMargin, setTargetMargin] = useState(1.5);
+  const [buyFee, setBuyFee] = useState<number | ''>(0.1);
+  const [sellFee, setSellFee] = useState<number | ''>(0.1);
+  const [networkFee, setNetworkFee] = useState<number | ''>(0.0002);
+  const [targetMargin, setTargetMargin] = useState<number | ''>(1.5);
 
   const [liveStatusBuy, setLiveStatusBuy] = useState('');
   const [liveStatusSell, setLiveStatusSell] = useState('');
@@ -208,7 +208,8 @@ export default function SpotCalculator() {
 
   const calculateSpotArbitrage = async () => {
     const bPrice = parseFloat(buyPrice);
-    if (isNaN(capital) || capital <= 0 || isNaN(bPrice) || bPrice <= 0) {
+    const numCapital = typeof capital === 'string' ? parseFloat(capital) : capital;
+    if (isNaN(numCapital) || numCapital <= 0 || isNaN(bPrice) || bPrice <= 0) {
       alert('⚠️ Por favor ingrese valores numéricos válidos.');
       return;
     }
@@ -218,11 +219,13 @@ export default function SpotCalculator() {
       return;
     }
 
-    const capitalTrasCompra = capital * (1 - (buyFee / 100));
+    const numBuyFee = typeof buyFee === 'string' ? parseFloat(buyFee) || 0 : buyFee;
+    const capitalTrasCompra = numCapital * (1 - (numBuyFee / 100));
     let totalTokensAdquiridos = capitalTrasCompra / bPrice;
 
-    if (networkFee > 0) {
-      totalTokensAdquiridos -= networkFee;
+    const numNetFee = typeof networkFee === 'string' ? parseFloat(networkFee) || 0 : networkFee;
+    if (numNetFee > 0) {
+      totalTokensAdquiridos -= numNetFee;
       if (totalTokensAdquiridos <= 0) {
         alert('🚨 La comisión de retiro de red supera los tokens comprados. Operación inviable.');
         return;
@@ -241,17 +244,20 @@ export default function SpotCalculator() {
         return;
       }
       capitalFinalBruto = totalTokensAdquiridos * precioDeVentaUtilizado;
-      retornoNetoFinal = capitalFinalBruto * (1 - (sellFee / 100));
-      spreadNetoPorcentaje = ((retornoNetoFinal - capital) / capital) * 100;
+      const numSellFee = typeof sellFee === 'string' ? parseFloat(sellFee) || 0 : sellFee;
+      retornoNetoFinal = capitalFinalBruto * (1 - (numSellFee / 100));
+      spreadNetoPorcentaje = ((retornoNetoFinal - numCapital) / numCapital) * 100;
     } else {
-      if (isNaN(targetMargin)) {
+      const numTargetMargin = typeof targetMargin === 'string' ? parseFloat(targetMargin) || 0 : targetMargin;
+      const numSellFee = typeof sellFee === 'string' ? parseFloat(sellFee) || 0 : sellFee;
+      if (isNaN(numTargetMargin)) {
         alert('⚠️ Ingrese un porcentaje de margen objetivo válido.');
         return;
       }
-      retornoNetoFinal = capital * (1 + (targetMargin / 100));
-      capitalFinalBruto = retornoNetoFinal / (1 - (sellFee / 100));
+      retornoNetoFinal = numCapital * (1 + (numTargetMargin / 100));
+      capitalFinalBruto = retornoNetoFinal / (1 - (numSellFee / 100));
       precioDeVentaUtilizado = capitalFinalBruto / totalTokensAdquiridos;
-      spreadNetoPorcentaje = targetMargin;
+      spreadNetoPorcentaje = numTargetMargin;
     }
 
     const decPrecio = bPrice > 500 ? 2 : 4;
@@ -275,7 +281,7 @@ export default function SpotCalculator() {
         user_id: session.user.id,
         fecha: new Date().toLocaleString(),
         estrategia: `SPOT ${cryptoAsset} (${exchangeSource.toUpperCase()} ➔ ${exchangeTarget.toUpperCase()})`,
-        capital: `USDT ${capital.toFixed(2)}`,
+        capital: `USDT ${numCapital.toFixed(2)}`,
         compra: bPrice.toFixed(decPrecio),
         venta: resPayload.precioDeVentaUtilizado,
         neto: `USDT ${resPayload.retornoNetoFinal}`,
@@ -349,7 +355,7 @@ export default function SpotCalculator() {
         <div className="input-group">
           <label>Capital de Trabajo</label>
           <div className="input-group-wrapper">
-            <input type="number" placeholder="1000" step="any" value={capital} onChange={(e) => setCapital(parseFloat(e.target.value))} />
+            <input type="number" placeholder="1000" step="any" value={capital} onChange={(e) => setCapital(e.target.value === '' ? '' : parseFloat(e.target.value))} />
             <span className="currency-tag">USDT</span>
           </div>
         </div>
@@ -367,7 +373,7 @@ export default function SpotCalculator() {
           <div className="input-group">
             <label>Comisión Trading (A)</label>
             <div className="input-group-wrapper">
-              <input type="number" placeholder="0.1" step="any" value={buyFee} onChange={(e) => setBuyFee(parseFloat(e.target.value))} />
+              <input type="number" placeholder="0.1" step="any" value={buyFee} onChange={(e) => setBuyFee(e.target.value === '' ? '' : parseFloat(e.target.value))} />
               <span className="currency-tag">%</span>
             </div>
           </div>
@@ -388,7 +394,7 @@ export default function SpotCalculator() {
             <div className="input-group">
               <label>Margen Objetivo Deseado</label>
               <div className="input-group-wrapper">
-                <input type="number" placeholder="1.5" step="any" value={targetMargin} onChange={(e) => setTargetMargin(parseFloat(e.target.value))} />
+                <input type="number" placeholder="1.5" step="any" value={targetMargin} onChange={(e) => setTargetMargin(e.target.value === '' ? '' : parseFloat(e.target.value))} />
                 <span className="currency-tag">%</span>
               </div>
             </div>
@@ -396,7 +402,7 @@ export default function SpotCalculator() {
           <div className="input-group">
             <label>Comisión Trading (B)</label>
             <div className="input-group-wrapper">
-              <input type="number" placeholder="0.1" step="any" value={sellFee} onChange={(e) => setSellFee(parseFloat(e.target.value))} />
+              <input type="number" placeholder="0.1" step="any" value={sellFee} onChange={(e) => setSellFee(e.target.value === '' ? '' : parseFloat(e.target.value))} />
               <span className="currency-tag">%</span>
             </div>
           </div>
@@ -405,7 +411,7 @@ export default function SpotCalculator() {
         <div className="input-group">
           <label>Comisión de Retiro/Red (Withdrawal Fee fijo)</label>
           <div className="input-group-wrapper">
-            <input type="number" placeholder="0.0002" step="any" value={networkFee} onChange={(e) => setNetworkFee(parseFloat(e.target.value))} />
+            <input type="number" placeholder="0.0002" step="any" value={networkFee} onChange={(e) => setNetworkFee(e.target.value === '' ? '' : parseFloat(e.target.value))} />
             <span className="currency-tag">{networkTag}</span>
           </div>
         </div>
