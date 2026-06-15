@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { supabase } from '../lib/supabase';
+import { isVipAdmin } from '../lib/admin';
 import Dashboard from '../components/Dashboard';
 import SpreadScanner from '../components/SpreadScanner';
 import SpotCalculator from '../components/SpotCalculator';
@@ -91,7 +92,7 @@ export default function Home() {
       setUser(sessionUser);
       
       // Check if user is premium — if so, never block
-      if (sessionUser.user_metadata?.is_premium || sessionUser.email?.toLowerCase() === 'jefersonlezama8@gmail.com') {
+      if (sessionUser.user_metadata?.is_premium || isVipAdmin(sessionUser.email)) {
         setShowTrialExpiredModal(false);
         return;
       }
@@ -136,7 +137,7 @@ export default function Home() {
   // Update expired modal visibility — only block non-VIP, non-premium users
   useEffect(() => {
     if (!isClient) return;
-    const isVip = user?.email?.toLowerCase() === 'jefersonlezama8@gmail.com';
+    const isVip = isVipAdmin(user?.email);
     const isPrem = user?.user_metadata?.is_premium;
     if (isVip || isPrem) {
       setShowTrialExpiredModal(false);
@@ -242,8 +243,8 @@ export default function Home() {
 
   // Un usuario es "gratis" si NO ha iniciado sesión, O si inició sesión pero no es PRO.
   // Esto permite que el bot verificador de A-Ads (que no inicia sesión) vea el anuncio en la página.
-  const isVipAdmin = user?.email?.toLowerCase() === 'jefersonlezama8@gmail.com';
-  const isFreeUser = !user || (user && !user.user_metadata?.is_premium && !isVipAdmin);
+  const isVipAdminUser = isVipAdmin(user?.email);
+  const isFreeUser = !user || (user && !user.user_metadata?.is_premium && !isVipAdminUser);
 
   return (
     <>

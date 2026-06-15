@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase as anonSupabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { isVipAdmin } from '@/lib/admin';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; 
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const isVip = user.email?.toLowerCase() === 'jefersonlezama8@gmail.com';
+    const isVip = isVipAdmin(user.email);
     const isPremium = user.user_metadata?.is_premium;
     
     if (!isVip && !isPremium) {

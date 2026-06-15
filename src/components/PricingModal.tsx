@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
 
 interface PricingModalProps {
   onClose: () => void;
@@ -12,10 +13,21 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose, userEmail }) => {
   const handleCheckout = async (planType: 'monthly' | 'annual') => {
     setLoadingPlan(planType);
     try {
+      // Get current session token for authenticated checkout
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('⚠️ Necesitas iniciar sesión para comprar PRO.');
+        setLoadingPlan(null);
+        return;
+      }
+
       const response = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planType, email: userEmail })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ planType })
       });
       const data = await response.json();
       

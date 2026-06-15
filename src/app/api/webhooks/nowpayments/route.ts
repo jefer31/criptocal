@@ -3,63 +3,123 @@ import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
 // Necesitamos el Service Role Key para poder editar usuarios desde el servidor sin sesión
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+
+if (!supabaseServiceKey) {
+  console.error('CRITICAL: SUPABASE_SERVICE_ROLE_KEY is not set. Webhook will fail.');
+}
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '');
 
 export async function POST(request: Request) {
   try {
+    // --- SECURITY: Verify IPN secret exists ---
+    const ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET;
+    if (!ipnSecret) {
+      console.error('CRITICAL: NOWPAYMENTS_IPN_SECRET is not set. Rejecting all webhooks.');
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+    }
+
     const signature = request.headers.get('x-nowpayments-sig');
     if (!signature) {
       return NextResponse.json({ error: 'No signature provided' }, { status: 401 });
     }
 
     const payloadString = await request.text();
-    const secret = process.env.NOWPAYMENTS_IPN_SECRET || '';
+    const payload = JSON.parse(payloadString);
 
-    // Generar la firma esperada usando HMAC-SHA512
-    const hmac = crypto.createHmac('sha512', secret);
-    hmac.update(payloadString);
+    // --- SECURITY: Sort keys before HMAC verification (NowPayments requirement) ---
+    const sortedPayload = Object.keys(payload)
+      .sort()
+      .reduce((acc: Record<string, any>, key: string) => {
+        acc[key] = payload[key];
+        return acc;
+      }, {});
+
+    const hmac = crypto.createHmac('sha512', ipnSecret);
+    hmac.update(JSON.stringify(sortedPayload));
     const expectedSignature = hmac.digest('hex');
 
     if (signature !== expectedSignature) {
-      console.error('Invalid signature.', { expected: expectedSignature, received: signature });
+      console.error('Invalid webhook signature.');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    const payload = JSON.parse(payloadString);
-    console.log('NowPayments IPN Received:', payload);
+    console.log('NowPayments IPN verified:', payload.payment_status, payload.order_id);
 
     // Los estados exitosos en NowPayments son "finished" o "confirmed"
     const isSuccess = payload.payment_status === 'finished' || payload.payment_status === 'confirmed';
 
     if (isSuccess && payload.order_id) {
-      const userEmail = payload.order_id;
-      console.log(`Payment confirmed for: ${userEmail}`);
+      // Parse order_id format: "email|planType|timestamp"
+      const orderParts = payload.order_id.split('|');
+      const userEmail = orderParts[0];
+      const planType = orderParts.length > 1 ? orderParts[1] : 'monthly';
 
-      // Buscar al usuario por correo usando Admin API (requiere Service Role Key)
-      // Supabase no tiene una forma directa de "buscar usuario por email" en la API pública.
-      // Sin embargo, podemos usar el Service Role Key (Admin API) para listar o actualizar.
-      
-      const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-      if (listError) {
-        console.error('Error listing users:', listError);
-        return NextResponse.json({ error: 'DB Error' }, { status: 500 });
+      if (!userEmail || !userEmail.includes('@')) {
+        console.error('Invalid email in order_id:', payload.order_id);
+        return NextResponse.json({ status: 'OK' });
       }
 
-      const user = usersData.users.find((u: any) => u.email === userEmail);
-      if (user) {
-        // Actualizar el perfil del usuario a PREMIUM
+      console.log(`Payment confirmed for: ${userEmail}, plan: ${planType}`);
+
+      // --- SECURITY: Search user by email directly instead of listing ALL users ---
+      const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        perPage: 1,
+        page: 1,
+      });
+
+      // Workaround: Supabase Admin API doesn't support email filter in listUsers,
+      // so we use a paginated approach to find the user
+      let targetUser = null;
+      let page = 1;
+      const perPage = 100;
+
+      while (!targetUser) {
+        const { data: pageData, error: pageError } = await supabaseAdmin.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+
+        if (pageError) {
+          console.error('Error listing users:', pageError);
+          return NextResponse.json({ error: 'DB Error' }, { status: 500 });
+        }
+
+        targetUser = pageData.users.find((u: any) => u.email === userEmail);
+
+        if (targetUser || pageData.users.length < perPage) break;
+        page++;
+      }
+
+      if (targetUser) {
+        // --- Calculate expiration date based on plan type ---
+        const now = new Date();
+        const expiresAt = new Date(now);
+        if (planType === 'annual') {
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        } else {
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
+        }
+
+        // Actualizar el perfil del usuario a PREMIUM con metadata de expiración
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-          user.id,
-          { user_metadata: { is_premium: true } }
+          targetUser.id,
+          {
+            user_metadata: {
+              is_premium: true,
+              premium_since: now.toISOString(),
+              premium_plan: planType,
+              premium_expires_at: expiresAt.toISOString(),
+            }
+          }
         );
 
         if (updateError) {
           console.error('Error updating user premium status:', updateError);
         } else {
-          console.log(`User ${userEmail} successfully upgraded to PRO!`);
+          console.log(`User ${userEmail} upgraded to PRO (${planType}), expires: ${expiresAt.toISOString()}`);
         }
       } else {
         console.error(`User with email ${userEmail} not found in database.`);

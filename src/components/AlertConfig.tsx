@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { isVipAdmin } from '@/lib/admin';
 
 interface AlertConfigType {
   id?: string;
@@ -64,7 +65,7 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
   }, []);
 
   const handleSave = async () => {
-    const isVipAdminSave = userEmail?.toLowerCase() === 'jefersonlezama8@gmail.com';
+    const isVipAdminSave = isVipAdmin(userEmail);
     if (!isPremium && !isVipAdminSave) {
       alert('⚠️ Las alertas automáticas son una función PRO. Actualiza tu plan para activarlas.');
       onUpgrade?.();
@@ -124,9 +125,9 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
   if (loading) return <div className="p-8 text-center text-gray-400">Cargando configuración...</div>;
   if (!userId) return <div className="p-8 text-center text-red-400">⚠️ Necesitas iniciar sesión para configurar alertas.</div>;
 
-  const isVipAdmin = userEmail?.trim().toLowerCase() === 'jefersonlezama8@gmail.com';
+  const isVipAdminCheck = isVipAdmin(userEmail);
   
-  if (!isPremium && !isVipAdmin) {
+  if (!isPremium && !isVipAdminCheck) {
     return (
       <div className="standard-calc">
         <div className="calc-panel-box" style={{ textAlign: 'center', padding: '40px 20px' }}>
@@ -135,9 +136,7 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
           <p style={{ color: 'var(--text-muted)', marginBottom: '20px', lineHeight: '1.6' }}>
             Con PRO, nuestros servidores escanean los exchanges 24/7 y te envían alertas instantáneas a Telegram cuando detectan spreads rentables.
           </p>
-          <p style={{ color: '#ff4444', marginBottom: '20px', fontSize: '12px' }}>
-            (Debug: Tu correo actual es "{userEmail}" y VIP es "{isVipAdmin ? 'Sí' : 'No'}")
-          </p>
+
           <button className="btn-primary" onClick={() => onUpgrade?.()}>
             🚀 Desbloquear Alertas PRO
           </button>
