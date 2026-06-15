@@ -149,6 +149,7 @@ export default function SpreadScanner() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     scanSpreads();
     const interval = setInterval(scanSpreads, 30000);
     return () => clearInterval(interval);

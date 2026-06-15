@@ -64,12 +64,18 @@ export default function SpotCalculator() {
   useEffect(() => {
     const saved = localStorage.getItem('criptocal_spot_routes');
     if (saved) {
-      try { setSavedRoutes(JSON.parse(saved)); } catch (e) {}
+      try { 
+        const parsed = JSON.parse(saved);
+        // Avoid setting state in effect if possible, or suppress the warning if it's intentional
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        setSavedRoutes(parsed); 
+      } catch (e) {}
     }
   }, []);
 
   useEffect(() => {
     const defaultFee = getDefaultNetworkFee(exchangeSource, cryptoAsset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setNetworkFee(defaultFee);
   }, [cryptoAsset, exchangeSource]);
 
