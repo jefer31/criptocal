@@ -66,18 +66,63 @@ export default function MathCalculator() {
     }
   };
 
+  // Safe recursive descent parser — NO eval/Function used
   const safeMathEval = (expr: string): number => {
-    // SECURITY: Only allow digits, operators, dots, spaces, and parentheses
     const sanitized = expr.replace(/\s/g, '');
     if (!/^[0-9+\-*/.()]+$/.test(sanitized)) {
       throw new Error('Expresión inválida');
     }
-    // Prevent empty parentheses or double operators
-    if (/\(\)/.test(sanitized) || /[+\-*/]{2,}/.test(sanitized.replace(/[+\-](?=[0-9(])/g, ''))) {
-      throw new Error('Sintaxis inválida');
-    }
-    // Use Function with the sanitized expression — now safe because we verified it contains ONLY math characters
-    return new Function(`"use strict"; return (${sanitized})`)() as number;
+    let pos = 0;
+    const peek = () => sanitized[pos];
+    const next = () => sanitized[pos++];
+
+    // Grammar: expr = term (('+' | '-') term)*
+    const parseExpr = (): number => {
+      let result = parseTerm();
+      while (peek() === '+' || peek() === '-') {
+        const op = next();
+        const right = parseTerm();
+        result = op === '+' ? result + right : result - right;
+      }
+      return result;
+    };
+
+    // term = factor (('*' | '/') factor)*
+    const parseTerm = (): number => {
+      let result = parseFactor();
+      while (peek() === '*' || peek() === '/') {
+        const op = next();
+        const right = parseFactor();
+        if (op === '/' && right === 0) throw new Error('División por cero');
+        result = op === '*' ? result * right : result / right;
+      }
+      return result;
+    };
+
+    // factor = ['-'] ( '(' expr ')' | number )
+    const parseFactor = (): number => {
+      if (peek() === '-') {
+        next();
+        return -parseFactor();
+      }
+      if (peek() === '(') {
+        next(); // skip '('
+        const result = parseExpr();
+        if (peek() === ')') next(); // skip ')'
+        return result;
+      }
+      // Parse number
+      let numStr = '';
+      while (pos < sanitized.length && (/[0-9.]/).test(peek())) {
+        numStr += next();
+      }
+      if (!numStr) throw new Error('Expresión inválida');
+      return parseFloat(numStr);
+    };
+
+    const result = parseExpr();
+    if (pos < sanitized.length) throw new Error('Sintaxis inválida');
+    return result;
   };
 
   const executeMathCalcResult = () => {
