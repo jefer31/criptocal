@@ -11,48 +11,49 @@ if (!supabaseServiceKey) {
   console.error('SUPABASE_SERVICE_ROLE_KEY is not set. RLS bypass will fail.');
 }
 
+const MAX_ALERTS = 5;
+
+// Helper to authenticate request
+async function authenticateRequest(request: Request) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader) return null;
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await anonSupabase.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
+}
+
+// GET: List all alerts for the user
 export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'No auth header' }, { status: 401 });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await anonSupabase.auth.getUser(token);
-    
-    if (userError || !user) {
+    const user = await authenticateRequest(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Usamos el admin para saltarnos las restricciones RLS (ya validamos al usuario arriba)
     const { data, error } = await supabaseAdmin
       .from('user_alerts')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .order('created_at', { ascending: true });
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-      throw error;
-    }
+    if (error) throw error;
 
-    return NextResponse.json({ config: data || null });
+    // Return array (backward compatible: also set config to first item)
+    return NextResponse.json({ 
+      configs: data || [],
+      config: data && data.length > 0 ? data[0] : null 
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
+// POST: Create or update an alert
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'No auth header' }, { status: 401 });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await anonSupabase.auth.getUser(token);
-    
-    if (userError || !user) {
+    const user = await authenticateRequest(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -64,9 +65,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { pair, exchange_buy, exchange_sell, min_spread, telegram_chat_id, is_active } = body;
+    const { id, pair, exchange_buy, exchange_sell, min_spread, telegram_chat_id, is_active } = body;
 
-    // Validate inputs to prevent bad data or injection
+    // Validate inputs
     if (!pair || typeof pair !== 'string') {
       return NextResponse.json({ error: 'Par inválido' }, { status: 400 });
     }
@@ -83,25 +84,87 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Chat ID de Telegram inválido' }, { status: 400 });
     }
 
-    // Usamos el admin para el upsert y así evitar el error de "violates row-level security policy"
+    // If id provided, update existing alert
+    if (id) {
+      const { data, error } = await supabaseAdmin
+        .from('user_alerts')
+        .update({
+          pair,
+          exchange_buy,
+          exchange_sell,
+          min_spread,
+          telegram_chat_id,
+          is_active: is_active ?? true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('user_id', user.id) // Security: ensure user owns this alert
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json({ success: true, config: data });
+    }
+
+    // Creating new alert — check limit
+    const { count, error: countError } = await supabaseAdmin
+      .from('user_alerts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    if (countError) throw countError;
+
+    if ((count || 0) >= MAX_ALERTS) {
+      return NextResponse.json({ 
+        error: `Máximo ${MAX_ALERTS} alertas permitidas. Elimina una antes de crear otra.` 
+      }, { status: 400 });
+    }
+
+    // Insert new alert
     const { data, error } = await supabaseAdmin
       .from('user_alerts')
-      .upsert({
+      .insert({
         user_id: user.id,
         pair,
         exchange_buy,
         exchange_sell,
         min_spread,
         telegram_chat_id,
-        is_active,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' })
+        is_active: is_active ?? true,
+      })
       .select()
       .single();
 
     if (error) throw error;
-
     return NextResponse.json({ success: true, config: data });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE: Remove a specific alert
+export async function DELETE(request: Request) {
+  try {
+    const user = await authenticateRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const alertId = searchParams.get('id');
+
+    if (!alertId) {
+      return NextResponse.json({ error: 'ID de alerta requerido' }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('user_alerts')
+      .delete()
+      .eq('id', alertId)
+      .eq('user_id', user.id); // Security: only delete your own
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
