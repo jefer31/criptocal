@@ -14,6 +14,7 @@ import AlertConfig from '../components/AlertConfig';
 import AdBanner from '../components/AdBanner';
 import PricingModal from '../components/PricingModal';
 import VenezuelaRates from '../components/VenezuelaRates';
+import InstructionsTab from '../components/InstructionsTab';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Home() {
@@ -474,6 +475,9 @@ export default function Home() {
         </div>
 
         <div className="sidebar-menu">
+                            <div className={`menu-item ${activeTab === 'instrucciones' ? 'active' : ''}`} onClick={() => { setActiveTab('instrucciones'); setIsSidebarOpen(false); }}>
+                                <span>📖</span> Guía de Uso
+                            </div>
                             <div className={`menu-item ${activeTab === 'calculadora' ? 'active' : ''}`} onClick={() => { setActiveTab('calculadora'); setIsSidebarOpen(false); }}>
                                 <span>🌍</span> Arbitraje P2P (Fiat)
                             </div>
@@ -519,7 +523,7 @@ export default function Home() {
                 <span></span>
             </button>
             <h2 id="mainContentTabTitle">
-                {activeTab === 'calculadora' ? 'Arbitraje P2P (Fiat)' : activeTab === 'spot' ? 'Escáner Spot (Cripto)' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
+                {activeTab === 'instrucciones' ? 'Guía de Uso Rápido' : activeTab === 'calculadora' ? 'Arbitraje P2P (Fiat)' : activeTab === 'spot' ? 'Escáner Spot (Cripto)' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
             </h2>
             <div  id="topHeaderClock">{currentTime}</div>
         </div>
@@ -529,6 +533,10 @@ export default function Home() {
             Prueba Gratuita: Te quedan {trialDaysLeft} {trialDaysLeft === 1 ? 'día' : 'días'}. ¡Crea una cuenta para no perder el acceso!
           </div>
         )}
+
+        <div id="instrucciones-tab" className={`tab-content ${activeTab === 'instrucciones' ? 'active' : ''}`}>
+            {activeTab === 'instrucciones' && <InstructionsTab />}
+        </div>
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
