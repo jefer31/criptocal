@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 
 interface PricingModalProps {
   onClose: () => void;
@@ -16,7 +17,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose, userEmail }) => {
       // Get current session token for authenticated checkout
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('⚠️ Necesitas iniciar sesión para comprar PRO.');
+        toast.error('Necesitas iniciar sesión para comprar PRO.');
         setLoadingPlan(null);
         return;
       }
@@ -34,12 +35,12 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose, userEmail }) => {
       if (data.payment_url) {
         window.location.href = data.payment_url;
       } else {
-        alert(data.error || 'Error al generar el pago. Intenta de nuevo.');
+        toast.error(data.error || 'Error al generar el pago. Intenta de nuevo.');
         setLoadingPlan(null);
       }
     } catch (error: any) {
       console.error(error);
-      alert('Error de conexión: ' + error.message);
+      toast.error('Error de conexión: ' + error.message);
       setLoadingPlan(null);
     }
   };

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 import { getDefaultNetworkFee } from '../data/networkFees';
 
 interface SavedRoute {
@@ -81,8 +82,8 @@ export default function SpotCalculator() {
 
   const saveRoute = () => {
     const newRoute = { asset: cryptoAsset, source: exchangeSource, target: exchangeTarget };
-    if (savedRoutes.some(r => r.asset === newRoute.asset && r.source === newRoute.source && r.target === newRoute.target)) {
-      alert('Esta ruta ya está guardada.');
+    if (savedRoutes.some(r => r.source === exchangeSource && r.target === exchangeTarget && r.asset === cryptoAsset)) {
+      toast.error('Esta ruta ya está guardada.');
       return;
     }
     const updated = [...savedRoutes, newRoute];
@@ -210,12 +211,12 @@ export default function SpotCalculator() {
     const bPrice = parseFloat(buyPrice);
     const numCapital = typeof capital === 'string' ? parseFloat(capital) : capital;
     if (isNaN(numCapital) || numCapital <= 0 || isNaN(bPrice) || bPrice <= 0) {
-      alert('⚠️ Por favor ingrese valores numéricos válidos.');
+      toast.error('Por favor ingrese valores numéricos válidos.');
       return;
     }
 
     if (exchangeSource === exchangeTarget) {
-      alert('⚠️ El exchange de compra y venta deben ser diferentes para realizar un arbitraje Spot.');
+      toast.error('El exchange de compra y venta deben ser diferentes para realizar un arbitraje Spot.');
       return;
     }
 
@@ -227,7 +228,7 @@ export default function SpotCalculator() {
     if (numNetFee > 0) {
       totalTokensAdquiridos -= numNetFee;
       if (totalTokensAdquiridos <= 0) {
-        alert('🚨 La comisión de retiro de red supera los tokens comprados. Operación inviable.');
+        toast.error('La comisión de retiro de red supera los tokens comprados. Operación inviable.');
         return;
       }
     }
@@ -240,7 +241,7 @@ export default function SpotCalculator() {
     if (calcStrategy === 'manual') {
       precioDeVentaUtilizado = parseFloat(sellPrice);
       if (isNaN(precioDeVentaUtilizado) || precioDeVentaUtilizado <= 0) {
-        alert('⚠️ Por favor ingrese un Precio de Venta válido.');
+        toast.error('Por favor ingrese un Precio de Venta válido.');
         return;
       }
       capitalFinalBruto = totalTokensAdquiridos * precioDeVentaUtilizado;
@@ -251,7 +252,7 @@ export default function SpotCalculator() {
       const numTargetMargin = typeof targetMargin === 'string' ? parseFloat(targetMargin) || 0 : targetMargin;
       const numSellFee = typeof sellFee === 'string' ? parseFloat(sellFee) || 0 : sellFee;
       if (isNaN(numTargetMargin)) {
-        alert('⚠️ Ingrese un porcentaje de margen objetivo válido.');
+        toast.error('Ingrese un porcentaje de margen objetivo válido.');
         return;
       }
       retornoNetoFinal = numCapital * (1 + (numTargetMargin / 100));

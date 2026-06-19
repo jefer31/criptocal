@@ -14,6 +14,7 @@ import AlertConfig from '../components/AlertConfig';
 import AdBanner from '../components/AdBanner';
 import PricingModal from '../components/PricingModal';
 import VenezuelaRates from '../components/VenezuelaRates';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function Home() {
   
@@ -65,7 +66,7 @@ export default function Home() {
 
       // Check for payment success
       if (window.location.search.includes('payment=success')) {
-        alert('🎉 ¡Pago confirmado! Tu cuenta está siendo actualizada a PRO.');
+        toast.success('¡Pago confirmado! Tu cuenta está siendo actualizada a PRO.', { duration: 5000 });
         // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname);
         // Force session refresh to get new user_metadata
@@ -248,7 +249,25 @@ export default function Home() {
 
   return (
     <>
-      
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#1a1a2e',
+            color: '#e0e0e0',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '10px',
+            fontSize: '14px',
+          },
+          success: {
+            iconTheme: { primary: '#00ff88', secondary: '#1a1a2e' },
+          },
+          error: {
+            iconTheme: { primary: '#ff5252', secondary: '#1a1a2e' },
+          },
+        }}
+      />
 {showTerms && (
 <div className="terms-modal-overlay" id="termsModal" style={{ zIndex: 9999, display: 'flex' }}>
     <div className="terms-modal-card" style={{ maxWidth: '650px', maxHeight: '80vh', overflowY: 'auto' }}>

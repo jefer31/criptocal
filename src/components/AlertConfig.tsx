@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { isVipAdmin } from '@/lib/admin';
+import toast from 'react-hot-toast';
 
 interface AlertConfigType {
   id?: string;
@@ -67,20 +68,20 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
   const handleSave = async () => {
     const isVipAdminSave = isVipAdmin(userEmail);
     if (!isPremium && !isVipAdminSave) {
-      alert('⚠️ Las alertas automáticas son una función PRO. Actualiza tu plan para activarlas.');
+      toast.error('Las alertas automáticas son una función PRO. Actualiza tu plan para activarlas.');
       onUpgrade?.();
       return;
     }
     if (!chatId) {
-      alert('⚠️ Necesitas ingresar tu Chat ID de Telegram para recibir alertas.');
+      toast.error('Necesitas ingresar tu Chat ID de Telegram para recibir alertas.');
       return;
     }
     if (exchangeBuy === exchangeSell) {
-      alert('⚠️ El exchange de compra y el de venta deben ser diferentes para que el arbitraje tenga sentido.');
+      toast.error('El exchange de compra y el de venta deben ser diferentes para que el arbitraje tenga sentido.');
       return;
     }
     if (minSpread < 0) {
-      alert('⚠️ El spread mínimo debe ser un porcentaje positivo (ej: 0.5%).');
+      toast.error('El spread mínimo debe ser un porcentaje positivo (ej: 0.5%).');
       return;
     }
 
@@ -110,14 +111,14 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
       if (res.ok) {
         const data = await res.json();
         setConfig(data.config);
-        alert('✅ Configuración de alertas guardada correctamente.');
+        toast.success('Configuración de alertas guardada correctamente.');
       } else {
         const errData = await res.json();
-        alert(`❌ Error al guardar: ${errData.error || 'Verifica tu conexión.'}`);
+        toast.error(`Error al guardar: ${errData.error || 'Verifica tu conexión.'}`);
       }
     } catch (err: any) {
       console.error(err);
-      alert(`❌ Hubo un error inesperado al guardar: ${err.message}`);
+      toast.error(`Hubo un error inesperado al guardar: ${err.message}`);
     }
     setSaving(false);
   };

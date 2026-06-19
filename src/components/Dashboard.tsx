@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import DynamicFiatRates from './DynamicFiatRates';
+import toast from 'react-hot-toast';
 
 interface SavedRoute {
   pair: string;
@@ -100,7 +101,7 @@ export default function Dashboard() {
   const saveRoute = () => {
     const newRoute = { pair: selectedPair, buyExchange, buyMethod, sellExchange, sellMethod };
     if (savedRoutes.some(r => r.pair === newRoute.pair && r.buyExchange === newRoute.buyExchange && r.buyMethod === newRoute.buyMethod && r.sellExchange === newRoute.sellExchange && r.sellMethod === newRoute.sellMethod)) {
-      alert('Esta ruta ya está guardada en tus favoritos.');
+      toast.error('Esta ruta ya está guardada en tus favoritos.');
       return;
     }
     const updated = [...savedRoutes, newRoute];
@@ -133,7 +134,7 @@ export default function Dashboard() {
     const setStatus = isCompra ? setLiveStatusBuy : setLiveStatusSell;
     
     if (exchange !== 'binance_p2p') {
-      alert('Los precios en vivo solo están disponibles para Binance P2P por ahora.');
+      toast.error('Los precios en vivo solo están disponibles para Binance P2P por ahora.');
       return;
     }
 
@@ -183,7 +184,7 @@ export default function Dashboard() {
     const p1Price = parseFloat(buyPrice);
     const numCapital = typeof capital === 'string' ? parseFloat(capital) : capital;
     if (isNaN(numCapital) || numCapital <= 0 || isNaN(p1Price) || p1Price <= 0) {
-      alert('⚠️ Por favor ingrese valores numéricos válidos en el Paso 1.');
+      toast.error('Por favor ingrese valores numéricos válidos en el Paso 1.');
       return;
     }
 
@@ -199,7 +200,10 @@ export default function Dashboard() {
     const cantidadCripto = capitalTrasFee / p1Price; // Divido Fiat / PrecioCompra = Cripto
 
     if (calcStrategy === 'manual') {
-      if (isNaN(sPrice) || sPrice <= 0) return alert('⚠️ Ingrese un precio válido en el Paso 2.');
+      if (isNaN(sPrice) || sPrice <= 0) {
+        toast.error('Ingrese un precio válido en el Paso 2.');
+        return;
+      }
       // Paso 2: Vender CRYPTO para recuperar Moneda Local
       const numSellFee = typeof sellFee === 'string' ? parseFloat(sellFee) || 0 : sellFee;
       const retornoBruto = cantidadCripto * sPrice; // Multiplico Cripto * PrecioVenta = Fiat
@@ -218,7 +222,10 @@ export default function Dashboard() {
     } else {
       const numTargetMargin = typeof targetMargin === 'string' ? parseFloat(targetMargin) || 0 : targetMargin;
       const numSellFee = typeof sellFee === 'string' ? parseFloat(sellFee) || 0 : sellFee;
-      if (isNaN(numTargetMargin)) return alert('⚠️ Ingrese un porcentaje válido.');
+      if (isNaN(numTargetMargin)) {
+        toast.error('Ingrese un porcentaje válido.');
+        return;
+      }
       const retornoObjetivo = numCapital * (1 + (numTargetMargin / 100)); // Quiero X% más de Fiat
       const retornoBrutoNecesario = retornoObjetivo / (1 - (numSellFee / 100));
       const precioPaso2Sugerido = retornoBrutoNecesario / cantidadCripto;

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 interface HistoryEntry {
   id: string;
@@ -69,7 +70,7 @@ export default function HistoryTable() {
 
   const exportCSV = () => {
     if (history.length === 0) {
-      alert("⚠️ No existen registros para exportar.");
+      toast.error("No existen registros para exportar.");
       return;
     }
     let csv = "Fecha/Hora,Ruta de Arbitraje,Capital Inicial,Precio Compra,Precio Venta,Retorno Neto,Spread %\n";

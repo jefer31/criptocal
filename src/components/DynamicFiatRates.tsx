@@ -41,7 +41,7 @@ export default function DynamicFiatRates({ fiatCurrency }: Props) {
               subLabel: 'Dólar Blue', subVal: dataBlue.venta + ' ARS',
             });
           }
-        } else if (['COP', 'MXN', 'PEN', 'BRL', 'CLP', 'EUR'].includes(fiatCurrency)) {
+        } else if (['COP', 'MXN', 'PEN', 'BRL', 'CLP', 'EUR', 'BOB', 'PYG', 'UYU', 'DOP'].includes(fiatCurrency)) {
           // Free API fallback for other currencies against USD
           const res = await fetch('https://open.er-api.com/v6/latest/USD');
           const data = await res.json();
@@ -55,7 +55,11 @@ export default function DynamicFiatRates({ fiatCurrency }: Props) {
               'PEN': '🇵🇪 Perú',
               'BRL': '🇧🇷 Brasil',
               'CLP': '🇨🇱 Chile',
-              'EUR': '🇪🇺 Europa'
+              'EUR': '🇪🇺 Europa',
+              'BOB': '🇧🇴 Bolivia',
+              'PYG': '🇵🇾 Paraguay',
+              'UYU': '🇺🇾 Uruguay',
+              'DOP': '🇩🇴 R. Dominicana'
             };
             
             setRates({
