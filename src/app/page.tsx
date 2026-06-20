@@ -15,6 +15,7 @@ import AdBanner from '../components/AdBanner';
 import PricingModal from '../components/PricingModal';
 import VenezuelaRates from '../components/VenezuelaRates';
 import InstructionsTab from '../components/InstructionsTab';
+import SpreadChart from '../components/SpreadChart';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Home() {
@@ -484,6 +485,12 @@ export default function Home() {
                             <div className={`menu-item ${activeTab === 'spot' ? 'active' : ''}`} onClick={() => { setActiveTab('spot'); setIsSidebarOpen(false); }}>
                                 <span>📈</span> Escáner Spot (Cripto)
                             </div>
+                            <div className={`menu-item ${activeTab === 'graficos' ? 'active' : ''}`} onClick={() => { 
+                                if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
+                                setActiveTab('graficos'); setIsSidebarOpen(false); 
+                            }}>
+                                <span>📊</span> Analítica Visual (PRO)
+                            </div>
                             <div className={`menu-item ${activeTab === 'alertas' ? 'active' : ''}`} onClick={() => { 
                               if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
                               setActiveTab('alertas'); setIsSidebarOpen(false); 
@@ -523,7 +530,7 @@ export default function Home() {
                 <span></span>
             </button>
             <h2 id="mainContentTabTitle">
-                {activeTab === 'instrucciones' ? 'Guía de Uso Rápido' : activeTab === 'calculadora' ? 'Arbitraje P2P (Fiat)' : activeTab === 'spot' ? 'Escáner Spot (Cripto)' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
+                {activeTab === 'instrucciones' ? 'Guía de Uso Rápido' : activeTab === 'calculadora' ? 'Arbitraje P2P (Fiat)' : activeTab === 'spot' ? 'Escáner Spot (Cripto)' : activeTab === 'graficos' ? 'Analítica Visual' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
             </h2>
             <div  id="topHeaderClock">{currentTime}</div>
         </div>
@@ -546,6 +553,11 @@ export default function Home() {
         <div id="spot-tab" className={`tab-content ${activeTab === 'spot' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             {activeTab === 'spot' && <><SpreadScanner /><SpotCalculator /></>}
+        </div>
+
+        <div id="graficos-tab" className={`tab-content ${activeTab === 'graficos' ? 'active' : ''}`}>
+            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            {activeTab === 'graficos' && <SpreadChart />}
         </div>
 
         <div id="historial-tab" className={`tab-content ${activeTab === 'historial' ? 'active' : ''}`}>
