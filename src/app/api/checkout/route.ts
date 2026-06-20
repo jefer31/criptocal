@@ -62,8 +62,8 @@ export async function POST(request: Request) {
         order_id: orderId,
         order_description: description,
         ipn_callback_url: `${appUrl}/api/webhooks/nowpayments`,
-        success_url: `${appUrl}?payment=success`,
-        cancel_url: `${appUrl}?payment=cancel`
+        success_url: `${appUrl}/dashboard?payment=success`,
+        cancel_url: `${appUrl}/dashboard?payment=cancel`
       })
     });
 
