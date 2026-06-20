@@ -2,11 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
+type ExchangeName = 'binance' | 'bybit' | 'okx' | 'kucoin';
+
 export default function SpreadChart() {
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
   const [symbol, setSymbol] = useState('BTCUSDT');
+  const [exchangeA, setExchangeA] = useState<ExchangeName>('binance');
+  const [exchangeB, setExchangeB] = useState<ExchangeName>('bybit');
 
   const PAIRS = [
     { value: 'BTCUSDT', label: 'Bitcoin (BTC)' },
@@ -16,26 +21,125 @@ export default function SpreadChart() {
     { value: 'XRPUSDT', label: 'Ripple (XRP)' },
   ];
 
+  const EXCHANGES = [
+    { value: 'binance', label: 'Binance' },
+    { value: 'bybit', label: 'Bybit' },
+    { value: 'okx', label: 'OKX' },
+    { value: 'kucoin', label: 'KuCoin' }
+  ];
+
+  // Helper to get formatted symbol for specific exchange
+  const getExchangeSymbol = (sym: string, ex: ExchangeName) => {
+    if (ex === 'okx' || ex === 'kucoin') {
+      return sym.replace('USDT', '-USDT'); // e.g. BTC-USDT
+    }
+    return sym; // BTCUSDT
+  };
+
+  // Fetch Klines for a specific exchange
+  const fetchKlines = async (ex: ExchangeName, sym: string): Promise<Map<number, number>> => {
+    const formattedSymbol = getExchangeSymbol(sym, ex);
+    const map = new Map<number, number>();
+
+    try {
+      if (ex === 'binance') {
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${formattedSymbol}&interval=1h&limit=24`);
+        const json = await res.json();
+        if (!Array.isArray(json)) throw new Error("Invalid format");
+        json.forEach((candle: any) => {
+          const ts = Math.floor(parseInt(candle[0]) / 3600000) * 3600000;
+          map.set(ts, parseFloat(candle[4])); // Close price
+        });
+      } 
+      else if (ex === 'bybit') {
+        const res = await fetch(`https://api.bybit.com/v5/market/kline?category=spot&symbol=${formattedSymbol}&interval=60&limit=24`);
+        const json = await res.json();
+        if (!json?.result?.list) throw new Error("Invalid format");
+        json.result.list.forEach((candle: any) => {
+          const ts = Math.floor(parseInt(candle[0]) / 3600000) * 3600000;
+          map.set(ts, parseFloat(candle[4]));
+        });
+      }
+      else if (ex === 'okx') {
+        const res = await fetch(`https://www.okx.com/api/v5/market/history-candles?instId=${formattedSymbol}&bar=1H&limit=24`);
+        const json = await res.json();
+        if (!json?.data || !Array.isArray(json.data)) throw new Error("Invalid format");
+        json.data.forEach((candle: any) => {
+          const ts = Math.floor(parseInt(candle[0]) / 3600000) * 3600000;
+          map.set(ts, parseFloat(candle[4]));
+        });
+      }
+      else if (ex === 'kucoin') {
+        // KuCoin requires time to be in seconds
+        const endAt = Math.floor(Date.now() / 1000);
+        const startAt = endAt - (24 * 3600);
+        const res = await fetch(`https://api.kucoin.com/api/v1/market/candles?type=1hour&symbol=${formattedSymbol}&startAt=${startAt}&endAt=${endAt}`);
+        const json = await res.json();
+        if (!json?.data || !Array.isArray(json.data)) throw new Error("Invalid format");
+        json.data.forEach((candle: any) => {
+          // KuCoin time is candle[0] in seconds
+          const ts = Math.floor((parseInt(candle[0]) * 1000) / 3600000) * 3600000;
+          map.set(ts, parseFloat(candle[2])); // KuCoin close price is index 2
+        });
+      }
+    } catch (error) {
+      console.warn(`Error fetching ${ex} klines:`, error);
+      // We don't throw here to allow graceful failure
+    }
+    return map;
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
+    const loadData = async () => {
       setLoading(true);
       setError(null);
+      setData([]);
+
       try {
-        const res = await fetch(`/api/crypto/history?symbol=${symbol}`);
-        const json = await res.json();
-        if (json.success) {
-          setData(json.data);
-        } else {
-          setError(json.error || 'Error fetching data');
+        const [mapA, mapB] = await Promise.all([
+          fetchKlines(exchangeA, symbol),
+          fetchKlines(exchangeB, symbol)
+        ]);
+
+        if (mapA.size === 0 || mapB.size === 0) {
+          throw new Error("Datos históricos no disponibles temporalmente para estos exchanges.");
         }
+
+        const result: any[] = [];
+        const allHours = Array.from(new Set([...mapA.keys(), ...mapB.keys()])).sort((a, b) => a - b);
+
+        allHours.forEach(hourMs => {
+          const priceA = mapA.get(hourMs);
+          const priceB = mapB.get(hourMs);
+
+          if (priceA && priceB) {
+            const spreadPercent = ((priceB - priceA) / priceA) * 100;
+            const date = new Date(hourMs);
+            const timeLabel = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+            result.push({
+              timestamp: hourMs,
+              timeLabel,
+              priceA,
+              priceB,
+              spreadPercent: parseFloat(spreadPercent.toFixed(4))
+            });
+          }
+        });
+
+        if (result.length === 0) {
+          throw new Error("No se pudo calcular el margen. Intenta con otro par o exchange.");
+        }
+
+        setData(result);
       } catch (err: any) {
-        setError(err.message);
+        setError(err.message || "Error desconocido al procesar los datos.");
       }
       setLoading(false);
     };
 
-    fetchData();
-  }, [symbol]);
+    loadData();
+  }, [symbol, exchangeA, exchangeB]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -43,8 +147,12 @@ export default function SpreadChart() {
       return (
         <div style={{ background: '#1a1a25', border: '1px solid #2a2a35', padding: '10px', borderRadius: '8px' }}>
           <p style={{ color: '#e1e1e6', fontWeight: 'bold', margin: '0 0 5px 0' }}>Hora: {label}</p>
-          <p style={{ color: '#00adb5', margin: '0 0 2px 0' }}>Binance (Compra): ${point.binancePrice.toLocaleString()}</p>
-          <p style={{ color: '#ffb74d', margin: '0 0 5px 0' }}>Bybit (Venta): ${point.bybitPrice.toLocaleString()}</p>
+          <p style={{ color: '#00adb5', margin: '0 0 2px 0', textTransform: 'capitalize' }}>
+            {exchangeA} (Compra): ${point.priceA.toLocaleString()}
+          </p>
+          <p style={{ color: '#ffb74d', margin: '0 0 5px 0', textTransform: 'capitalize' }}>
+            {exchangeB} (Venta): ${point.priceB.toLocaleString()}
+          </p>
           <p style={{ 
             color: point.spreadPercent > 0 ? '#00e676' : '#ff5252', 
             fontWeight: 'bold',
@@ -62,68 +170,57 @@ export default function SpreadChart() {
     <div className="standard-calc">
       <div className="calc-panel-box">
         <div className="panel-title-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <div><span>📊</span> Analítica de Spread: Binance vs Bybit (24h)</div>
-          <select 
-            value={symbol} 
-            onChange={(e) => setSymbol(e.target.value)}
-            style={{ 
-              background: 'var(--card-bg-light)', 
-              color: 'var(--primary)', 
-              border: '1px solid var(--border)', 
-              borderRadius: '6px', 
-              padding: '4px 10px',
-              fontWeight: 'bold',
-              outline: 'none'
-            }}
-          >
-            {PAIRS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
+          <div><span>📊</span> Analítica de Spread (24h)</div>
+          
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <select 
+              value={exchangeA} 
+              onChange={(e) => setExchangeA(e.target.value as ExchangeName)}
+              style={{ background: 'var(--card-bg-light)', color: '#00adb5', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', fontWeight: 'bold' }}
+            >
+              {EXCHANGES.map(p => <option key={`A-${p.value}`} value={p.value}>Compra: {p.label}</option>)}
+            </select>
+
+            <select 
+              value={exchangeB} 
+              onChange={(e) => setExchangeB(e.target.value as ExchangeName)}
+              style={{ background: 'var(--card-bg-light)', color: '#ffb74d', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', fontWeight: 'bold' }}
+            >
+              {EXCHANGES.map(p => <option key={`B-${p.value}`} value={p.value}>Venta: {p.label}</option>)}
+            </select>
+
+            <select 
+              value={symbol} 
+              onChange={(e) => setSymbol(e.target.value)}
+              style={{ background: 'var(--card-bg-light)', color: 'white', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', fontWeight: 'bold' }}
+            >
+              {PAIRS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+          </div>
         </div>
 
         {loading ? (
           <div style={{ height: '350px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <div className="btn-spinner" style={{ marginRight: '10px' }}></div> Cargando historial de precios...
+            <div className="btn-spinner" style={{ marginRight: '10px' }}></div> Obteniendo historiales...
           </div>
         ) : error ? (
           <div style={{ height: '350px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--danger)' }}>
-            ⚠️ Error: {error}
+            <span style={{ fontSize: '24px', marginRight: '10px' }}>⚠️</span> {error}
           </div>
         ) : data.length === 0 ? (
           <div style={{ height: '350px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)' }}>
-            No hay datos disponibles para este par.
+            No hay suficientes datos superpuestos para este par.
           </div>
         ) : (
           <div style={{ width: '100%', height: '350px', marginTop: '20px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={data}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              >
+              <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a35" vertical={false} />
-                <XAxis 
-                  dataKey="timeLabel" 
-                  stroke="#6b7280" 
-                  tick={{ fill: '#6b7280', fontSize: 12 }} 
-                  tickMargin={10} 
-                  minTickGap={20}
-                />
-                <YAxis 
-                  stroke="#6b7280" 
-                  tick={{ fill: '#6b7280', fontSize: 12 }} 
-                  tickFormatter={(val) => `${val}%`} 
-                  domain={['auto', 'auto']}
-                />
+                <XAxis dataKey="timeLabel" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12 }} tickMargin={10} minTickGap={20} />
+                <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12 }} tickFormatter={(val) => `${val}%`} domain={['auto', 'auto']} />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine y={0} stroke="#ff5252" strokeDasharray="3 3" opacity={0.5} />
-                <Line 
-                  type="monotone" 
-                  dataKey="spreadPercent" 
-                  stroke="#00adb5" 
-                  strokeWidth={3} 
-                  dot={{ r: 2, fill: '#00adb5', strokeWidth: 0 }} 
-                  activeDot={{ r: 6, fill: '#00e676', strokeWidth: 0 }} 
-                  animationDuration={1500}
-                />
+                <Line type="monotone" dataKey="spreadPercent" stroke="#00adb5" strokeWidth={3} dot={{ r: 2, fill: '#00adb5', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#00e676', strokeWidth: 0 }} animationDuration={1000} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -131,10 +228,10 @@ export default function SpreadChart() {
 
         <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(0, 173, 181, 0.05)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
           <strong>💡 ¿Cómo interpretar este gráfico?</strong><br/>
-          Este gráfico muestra el margen de rentabilidad bruto comprando en Binance y vendiendo en Bybit durante las últimas 24 horas. 
+          Comparamos los precios históricos directos desde el navegador para evitar bloqueos geográficos.
           <ul>
-            <li style={{ marginTop: '5px' }}>Si la línea azul sube por encima del 0%, hubo oportunidad de ganancia.</li>
-            <li style={{ marginTop: '5px' }}>Los picos más altos te indican a qué horas del día el mercado suele ser más ineficiente y rentable.</li>
+            <li style={{ marginTop: '5px' }}>Si la línea sube por encima del 0%, hubo oportunidad de ganancia bruta.</li>
+            <li style={{ marginTop: '5px' }}>Las desconexiones indican que alguno de los exchanges seleccionados no proveyó datos para esa hora.</li>
           </ul>
         </div>
       </div>
