@@ -21,15 +21,10 @@ async function fetchPrice(exchange: string, symbol: string): Promise<{ ask: numb
     switch (exchange) {
       case 'binance': {
         try {
-          const res = await fetch(`https://api.binance.com/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
+          // Usamos data-api para evitar el bloqueo de IP de EE.UU a los servidores de Vercel
+          const res = await fetch(`https://data-api.binance.vision/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
           if (res.askPrice) { ask = parseFloat(res.askPrice); bid = parseFloat(res.bidPrice); }
         } catch (_) {}
-        if (!ask) {
-          try {
-            const res = await fetch(`https://api.binance.us/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
-            if (res.askPrice) { ask = parseFloat(res.askPrice); bid = parseFloat(res.bidPrice); }
-          } catch (_) {}
-        }
         break;
       }
       case 'bybit': {
@@ -77,26 +72,7 @@ async function fetchPrice(exchange: string, symbol: string): Promise<{ ask: numb
     // Outer catch — exchange step failed entirely, continue to fallback
   }
 
-  // Step 2: If exchange didn't return valid prices, use CoinGecko as universal fallback
-  if (!ask || !bid || isNaN(ask) || isNaN(bid)) {
-    try {
-      const coinId = symbol.replace('USDT', '').toLowerCase();
-      const coinMap: Record<string, string> = {
-        btc: 'bitcoin', eth: 'ethereum', sol: 'solana', bnb: 'binancecoin', xrp: 'ripple'
-      };
-      const geckoId = coinMap[coinId] || coinId;
-      const geckoRes = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${geckoId}&vs_currencies=usd`,
-        { signal: AbortSignal.timeout(5000) }
-      ).then(r => r.json());
-
-      if (geckoRes[geckoId]?.usd) {
-        const price = geckoRes[geckoId].usd;
-        ask = price * 1.0001;
-        bid = price * 0.9999;
-      }
-    } catch (_) { /* CoinGecko also failed */ }
-  }
+  // Fallback a CoinGecko eliminado para evitar falsos positivos con spreads inventados
 
   if (ask > 0 && bid > 0 && !isNaN(ask) && !isNaN(bid)) {
     return { ask, bid };
