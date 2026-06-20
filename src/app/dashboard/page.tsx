@@ -43,11 +43,16 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-      // Restore remember-me email
+      // Restore remember-me email and active tab
       const savedEmail = localStorage.getItem('rememberedEmail');
       if (savedEmail) {
         setEmail(savedEmail);
         setRememberMe(true);
+      }
+      
+      const savedTab = localStorage.getItem('criptocal_active_tab');
+      if (savedTab) {
+        setActiveTab(savedTab);
       }
       
       // ANONYMOUS 7-DAY TRIAL LOGIC
@@ -151,6 +156,12 @@ export default function Home() {
     }
   }, [user, trialDaysLeft, isClient]);
 
+  // Save activeTab to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeTab) {
+      localStorage.setItem('criptocal_active_tab', activeTab);
+    }
+  }, [activeTab]);
   const [currentTime, setCurrentTime] = useState('Cargando fecha...');
   
   useEffect(() => {
