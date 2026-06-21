@@ -86,7 +86,9 @@ export async function GET(request: Request) {
   const forceNotify = url.searchParams.get('force') === 'true';
 
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronKey = url.searchParams.get('cron_key');
+  
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && cronKey !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
