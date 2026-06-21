@@ -127,7 +127,7 @@ export default function LandingPage() {
         color: 'var(--text-muted)',
         marginTop: '50px'
       }}>
-        <p>© {new Date().getFullYear()} CriptoCal. Todos los derechos reservados.</p>
+        <p>© {new Date().getFullYear()} CriptoCal v2.1. Todos los derechos reservados.</p>
         <p style={{ fontSize: '12px', marginTop: '10px' }}>
           El comercio de criptomonedas implica un riesgo significativo.
         </p>

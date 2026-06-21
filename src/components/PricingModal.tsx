@@ -90,7 +90,6 @@ const PricingModal: React.FC<PricingModalProps> = ({ onClose, userEmail }) => {
               <li style={{ marginBottom: '10px' }}>✅ <strong>Ahorras $30 USDT (2 meses gratis)</strong></li>
               <li style={{ marginBottom: '10px' }}>✅ 0% Anuncios y publicidad</li>
               <li style={{ marginBottom: '10px' }}>✅ Alertas VIP instantáneas</li>
-              <li style={{ marginBottom: '10px' }}>✅ Acceso prioritario a Inteligencia Artificial (Futuro)</li>
             </ul>
             <button 
               className="btn-primary" 
