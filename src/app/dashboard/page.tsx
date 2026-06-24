@@ -259,6 +259,7 @@ export default function Home() {
   // TEMP: HIDE PRO FEATURES - Mantenemos los anuncios pero bloqueamos la venta PRO
   const isVipAdminUser = isVipAdmin(user?.email);
   const isFreeUser = !user || (user && !user.user_metadata?.is_premium && !isVipAdminUser);
+  const showAds = true; // Por ahora mostramos anuncios a TODOS los usuarios (incluyendo admins)
 
   return (
     <>
@@ -547,27 +548,27 @@ export default function Home() {
         </div>
 
         <div id="calculadora-tab" className={`tab-content ${activeTab === 'calculadora' ? 'active' : ''}`}>
-            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            {showAds && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             {activeTab === 'calculadora' && <Dashboard />}
         </div>
 
         <div id="spot-tab" className={`tab-content ${activeTab === 'spot' ? 'active' : ''}`}>
-            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            {showAds && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             {activeTab === 'spot' && <><SpreadScanner /><SpotCalculator /></>}
         </div>
 
         <div id="graficos-tab" className={`tab-content ${activeTab === 'graficos' ? 'active' : ''}`}>
-            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            {showAds && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             {activeTab === 'graficos' && <SpreadChart />}
         </div>
 
         <div id="historial-tab" className={`tab-content ${activeTab === 'historial' ? 'active' : ''}`}>
-            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            {showAds && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             {activeTab === 'historial' && <HistoryTable />}
         </div>
 
         <div id="matematica-tab" className={`tab-content ${activeTab === 'matematica' ? 'active' : ''}`}>
-            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            {showAds && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             {activeTab === 'matematica' && <MathCalculator />}
         </div>
 
@@ -580,7 +581,7 @@ export default function Home() {
         </div>
 
         <div id="alertas-tab" className={`tab-content ${activeTab === 'alertas' ? 'active' : ''}`}>
-            {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            {showAds && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
             {activeTab === 'alertas' && <AlertConfig isPremium={true} onUpgrade={() => setShowPricingModal(true)} />}
         </div>
 
