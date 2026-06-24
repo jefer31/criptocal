@@ -256,8 +256,9 @@ export default function Home() {
   };
 
   // TEMP: HIDE PRO FEATURES - Tratar a todos como premium por ahora
+  // TEMP: HIDE PRO FEATURES - Mantenemos los anuncios pero bloqueamos la venta PRO
   const isVipAdminUser = isVipAdmin(user?.email);
-  const isFreeUser = false; // !user || (user && !user.user_metadata?.is_premium && !isVipAdminUser);
+  const isFreeUser = !user || (user && !user.user_metadata?.is_premium && !isVipAdminUser);
 
   return (
     <>
@@ -591,7 +592,7 @@ export default function Home() {
 
         <div id="alertas-tab" className={`tab-content ${activeTab === 'alertas' ? 'active' : ''}`}>
             {isFreeUser && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
-            {activeTab === 'alertas' && <AlertConfig isPremium={!isFreeUser} onUpgrade={() => setShowPricingModal(true)} />}
+            {activeTab === 'alertas' && <AlertConfig isPremium={true} onUpgrade={() => setShowPricingModal(true)} />}
         </div>
 
     </div>

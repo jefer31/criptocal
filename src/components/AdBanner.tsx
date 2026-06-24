@@ -34,6 +34,7 @@ const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top', onUpgrade }) => 
         ></iframe>
       </div>
 
+      {/* TEMP: HIDE PRO FEATURES
       <button onClick={onUpgrade} style={{
         marginTop: '10px',
         padding: '6px 12px',
@@ -50,6 +51,7 @@ const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top', onUpgrade }) => 
       >
         Ocultar anuncios (Hazte PRO)
       </button>
+      */}
     </div>
   );
 };
