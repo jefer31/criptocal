@@ -304,32 +304,21 @@ export default function Home() {
 </div>
 )}
 
-{/* TEMP: HIDE PRO FEATURES - Ocultamos el modal de prueba terminada */}
-{false && showTrialExpiredModal && (
+{/* TEMP: HIDE PRO FEATURES - Solo mostramos el modal para forzar registro a usuarios anónimos */}
+{showTrialExpiredModal && !user && (
 <div className="terms-modal-overlay" style={{ zIndex: 9999, display: 'flex', background: 'rgba(10, 10, 26, 0.95)', backdropFilter: 'blur(10px)' }}>
     <div className="terms-modal-card" style={{ maxWidth: '500px', textAlign: 'center', padding: '40px 30px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
-        <h2 style={{ fontSize: '24px', marginBottom: '15px', color: 'var(--text-color)' }}>{user ? 'Tu prueba PRO ha finalizado' : 'Tu prueba de 7 días ha finalizado'}</h2>
+        <h2 style={{ fontSize: '24px', marginBottom: '15px', color: 'var(--text-color)' }}>Tu prueba de 7 días ha finalizado</h2>
         <p style={{ color: 'var(--text-muted)', marginBottom: '30px', lineHeight: '1.6' }}>
-            {user 
-              ? 'Actualiza a PRO para seguir usando todas las funciones de CriptoCal, incluyendo alertas por Telegram y sin anuncios.'
-              : 'Esperamos que hayas descubierto grandes oportunidades de arbitraje. Para seguir utilizando CriptoCal y acceder a tus historiales, debes crear una cuenta gratuita.'
-            }
+            Esperamos que hayas descubierto grandes oportunidades de arbitraje. Para seguir utilizando CriptoCal y acceder a tus historiales, debes crear una cuenta gratuita.
         </p>
-        {user ? (
-          <button className="btn-primary" onClick={() => { setShowPricingModal(true); setShowTrialExpiredModal(false); }} style={{ width: '100%', padding: '15px' }}>
-            🚀 Actualizar a PRO
-          </button>
-        ) : (
-          <>
-          <button className="btn-primary" onClick={() => { setShowAuthModal(true); setIsLoginMode(false); }} style={{ width: '100%', marginBottom: '15px', padding: '15px' }}>
-              Registrarse Gratis
-          </button>
-          <button className="btn-secondary" onClick={() => { setShowAuthModal(true); setIsLoginMode(true); }} style={{ width: '100%', padding: '15px' }}>
-              Ya tengo una cuenta
-          </button>
-          </>
-        )}
+        <button className="btn-primary" onClick={() => { setShowAuthModal(true); setIsLoginMode(false); setShowTrialExpiredModal(false); }} style={{ width: '100%', marginBottom: '15px', padding: '15px' }}>
+            Registrarse Gratis
+        </button>
+        <button className="btn-secondary" onClick={() => { setShowAuthModal(true); setIsLoginMode(true); setShowTrialExpiredModal(false); }} style={{ width: '100%', padding: '15px' }}>
+            Ya tengo una cuenta
+        </button>
     </div>
 </div>
 )}
