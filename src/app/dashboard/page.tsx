@@ -255,10 +255,9 @@ export default function Home() {
     }
   };
 
-  // Un usuario es "gratis" si NO ha iniciado sesión, O si inició sesión pero no es PRO.
-  // Esto permite que el bot verificador de A-Ads (que no inicia sesión) vea el anuncio en la página.
+  // TEMP: HIDE PRO FEATURES - Tratar a todos como premium por ahora
   const isVipAdminUser = isVipAdmin(user?.email);
-  const isFreeUser = !user || (user && !user.user_metadata?.is_premium && !isVipAdminUser);
+  const isFreeUser = false; // !user || (user && !user.user_metadata?.is_premium && !isVipAdminUser);
 
   return (
     <>
@@ -304,7 +303,8 @@ export default function Home() {
 </div>
 )}
 
-{showTrialExpiredModal && (
+{/* TEMP: HIDE PRO FEATURES - Ocultamos el modal de prueba terminada */}
+{false && showTrialExpiredModal && (
 <div className="terms-modal-overlay" style={{ zIndex: 9999, display: 'flex', background: 'rgba(10, 10, 26, 0.95)', backdropFilter: 'blur(10px)' }}>
     <div className="terms-modal-card" style={{ maxWidth: '500px', textAlign: 'center', padding: '40px 30px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
@@ -500,7 +500,7 @@ export default function Home() {
                                 if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
                                 setActiveTab('graficos'); setIsSidebarOpen(false); 
                             }}>
-                                <span>📊</span> Analítica Visual (PRO)
+                                <span>📊</span> Analítica Visual
                             </div>
                             <div className={`menu-item ${activeTab === 'alertas' ? 'active' : ''}`} onClick={() => { 
                               if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
@@ -581,7 +581,7 @@ export default function Home() {
             {activeTab === 'matematica' && <MathCalculator />}
         </div>
 
-        {showPricingModal && (
+        {false && showPricingModal && (
           <PricingModal onClose={() => setShowPricingModal(false)} userEmail={user?.email} />
         )}
 

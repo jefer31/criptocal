@@ -32,7 +32,7 @@ export default function InstructionsTab() {
             <br/>3. Si el spread es positivo (verde) y suficientemente grande para cubrir la comisión de retiro (red), tienes una oportunidad de ganancia.
           </p>
 
-          <h3 style={{ color: 'var(--primary)', marginBottom: '10px', fontSize: '18px' }}>🔔 Alertas Bot (Función PRO)</h3>
+          <h3 style={{ color: 'var(--primary)', marginBottom: '10px', fontSize: '18px' }}>🤖 Alertas Bot</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
             Buscar oportunidades manualmente toma mucho tiempo. El Robot hace el trabajo duro por ti 24/7.
             <br/><br/>
