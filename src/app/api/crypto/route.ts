@@ -5,7 +5,7 @@ const priceCache: Record<string, { price: number; timestamp: number }> = {};
 
 const fetchers: Record<string, (symbol: string, isBuy?: boolean) => Promise<any>> = {
   binance: async (sym, isBuy) => {
-    const res = await fetch(`https://api.binance.com/api/v3/ticker/bookTicker?symbol=${sym}`);
+    const res = await fetch(`https://data-api.binance.vision/api/v3/ticker/bookTicker?symbol=${sym}`);
     const data = await res.json();
     if (isBuy === undefined) return { ask: parseFloat(data.askPrice), bid: parseFloat(data.bidPrice) };
     return parseFloat(isBuy ? data.askPrice : data.bidPrice);
@@ -79,11 +79,6 @@ export async function GET(request: Request) {
   }
 
   try {
-    const cacheKey = `${exchangeId}-${rawSymbol}-${type}`;
-    // Si queremos el objeto completo (ask y bid) no cacheados por precio único
-    // Opcional: ignoramos el caché local en la API proxy o lo mantenemos simple.
-    // Vamos a deshabilitar la caché para el proxy para evitar datos erróneos de spreads, o reducimos TTL a 2000
-    
     const fetcher = fetchers[exchangeId];
     if (!fetcher) {
       return NextResponse.json({ error: 'Exchange no soportado temporalmente' }, { status: 400 });
@@ -95,7 +90,7 @@ export async function GET(request: Request) {
       return NextResponse.json(data);
     }
 
-    const isBuy = type === 'compra'; // Compra = necesitamos el Ask
+    const isBuy = type === 'compra';
     const price = await fetcher(rawSymbol, isBuy);
 
     if (!price || isNaN(price)) {
@@ -103,13 +98,14 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ price, cached: false });
-
   } catch (error: any) {
-    console.error(`Fetch API Error [${exchangeId}]:`, error.message);
-    return NextResponse.json(
-      { error: error.message || 'Fallo de conexión con el exchange' },
-      { status: 500 }
-    );
+    // If the error is a JSON parsing error, it means the exchange returned HTML (blocked Vercel IP)
+    if (error instanceof SyntaxError || (error.message && error.message.includes('JSON'))) {
+      console.error(`[CryptoProxy] Error de parsing JSON para ${exchangeId} ${rawSymbol}: Bloqueo de IP de Vercel detectado.`);
+      return NextResponse.json({ error: `El exchange bloqueó la conexión del servidor.` }, { status: 502 });
+    }
+    
+    console.error(`[CryptoProxy] Error fetching ${exchangeId} ${rawSymbol}:`, error.message);
+    return NextResponse.json({ error: error.message || 'Error al obtener precio del exchange' }, { status: 500 });
   }
 }
-

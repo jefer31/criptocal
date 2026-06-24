@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const res = await fetch("https://api.binance.com/api/v3/ticker/price");
+    const res = await fetch("https://data-api.binance.vision/api/v3/ticker/price");
     if (!res.ok) throw new Error('Failed to fetch from Binance');
     
     const data = await res.json();
