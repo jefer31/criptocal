@@ -6,6 +6,20 @@ interface AdBannerProps {
 }
 
 const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top', onUpgrade }) => {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    // Solo se ejecuta en el cliente
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const adSize = isMobile ? "320x50" : "728x90";
+  const iframeWidth = isMobile ? "320px" : "728px";
+  const iframeHeight = isMobile ? "50px" : "90px";
+
   return (
     <div className={`ad-banner-container placement-${placement}`} style={{
       width: '100%',
@@ -18,18 +32,19 @@ const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top', onUpgrade }) => 
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      textAlign: 'center'
+      textAlign: 'center',
+      overflow: 'hidden' // Evita que rompa el layout si algo sale
     }}>
       <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', color: 'var(--text-muted)', opacity: 0.7 }}>
         Publicidad
       </div>
       
       {/* A-Ads Real Ad Unit */}
-      <div id="frame" style={{ width: '100%', maxWidth: '728px', margin: 'auto', zIndex: 1, height: 'auto', overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+      <div id="frame" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <iframe 
           data-aa="2443965" 
-          src="//ad.a-ads.com/2443965/?size=728x90"
-          style={{ border: 0, padding: 0, width: '728px', maxWidth: '100%', height: '90px', overflow: 'hidden', display: 'block', margin: 'auto' }}
+          src={`//ad.a-ads.com/2443965/?size=${adSize}`}
+          style={{ border: 0, padding: 0, width: iframeWidth, height: iframeHeight, overflow: 'hidden', display: 'block', margin: 'auto' }}
           title="Crypto Advertisement"
         ></iframe>
       </div>
