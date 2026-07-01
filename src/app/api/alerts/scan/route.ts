@@ -111,7 +111,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const debugMode = url.searchParams.get('debug') === 'true';
   const forceNotify = url.searchParams.get('force') === 'true';
-  const GLOBAL_SPREAD_THRESHOLD = forceNotify ? 0.01 : 1.0; // 1% para envíos globales
+  const GLOBAL_SPREAD_THRESHOLD = forceNotify ? 0.01 : 0.15; // 0.15% para envíos globales (spot entre CEX grandes rara vez supera 1%)
 
   const authHeader = request.headers.get('authorization');
   const cronKey = url.searchParams.get('cron_key');
