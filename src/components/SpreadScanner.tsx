@@ -12,102 +12,87 @@ interface SpreadResult {
   spreadPercent: number;
 }
 
-interface ExchangePrice {
-  exchange: string;
-  ask: number;
-  bid: number;
-}
-
-const EXCHANGES = ['binance', 'bybit', 'mexc', 'kucoin', 'okx', 'bitget', 'gateio', 'kraken'];
-const PAIRS = [
-  { symbol: 'BTCUSDT', label: 'BTC/USDT', icon: '₿' },
-  { symbol: 'ETHUSDT', label: 'ETH/USDT', icon: 'Ξ' },
-  { symbol: 'SOLUSDT', label: 'SOL/USDT', icon: '◎' },
-  { symbol: 'XRPUSDT', label: 'XRP/USDT', icon: '✕' },
-  { symbol: 'BNBUSDT', label: 'BNB/USDT', icon: '◆' },
+const TOP_COINS = [
+  'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'DOGEUSDT', 
+  'TRXUSDT', 'TONUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'SHIBUSDT', 'BCHUSDT', 
+  'LINKUSDT', 'AVAXUSDT', 'NEARUSDT', 'UNIUSDT', 'ATOMUSDT', 'XLMUSDT', 'PEPEUSDT',
+  'ICPUSDT', 'FILUSDT', 'ETCUSDT', 'APTUSDT', 'STXUSDT', 'IMXUSDT', 'OPUSDT', 
+  'INJUSDT', 'RNDRUSDT', 'WIFUSDT', 'ARBUSDT', 'MNTUSDT', 'CROUSDT', 'VETUSDT',
+  'MKRUSDT', 'GRTUSDT', 'LDOUSDT', 'TIAUSDT', 'RUNEUSDT', 'ARUSDT', 'THETAUSDT',
+  'FTMUSDT', 'AAVEUSDT', 'ALGOUSDT', 'FLOKIUSDT', 'QNTUSDT'
 ];
 
-const EXCHANGE_LABELS: Record<string, string> = {
-  binance: 'Binance', bybit: 'Bybit', mexc: 'MEXC', kucoin: 'KuCoin',
-  okx: 'OKX', bitget: 'Bitget', gateio: 'Gate.io', kraken: 'Kraken'
+const COIN_LABELS: Record<string, string> = {
+  BTCUSDT: '₿ BTC', ETHUSDT: 'Ξ ETH', SOLUSDT: '◎ SOL', XRPUSDT: '✕ XRP',
+  BNBUSDT: '◆ BNB', ADAUSDT: '♦ ADA', DOGEUSDT: 'Ð DOGE', TRXUSDT: '✧ TRX',
+  TONUSDT: '💎 TON', DOTUSDT: '● DOT', MATICUSDT: '⬟ MATIC', LTCUSDT: 'Ł LTC',
+  SHIBUSDT: '🐕 SHIB', BCHUSDT: 'Ƀ BCH', LINKUSDT: '⬡ LINK', AVAXUSDT: '▲ AVAX',
+  NEARUSDT: 'Ⓝ NEAR', UNIUSDT: '🦄 UNI', ATOMUSDT: '⚛ ATOM', XLMUSDT: '★ XLM',
+  PEPEUSDT: '🐸 PEPE', ICPUSDT: '∞ ICP', FILUSDT: '⨎ FIL', ETCUSDT: 'ξ ETC',
+  APTUSDT: 'APT', STXUSDT: 'STX', IMXUSDT: 'IMX', OPUSDT: 'OP',
+  INJUSDT: 'INJ', RNDRUSDT: 'RNDR', WIFUSDT: 'WIF', ARBUSDT: 'ARB',
+  MNTUSDT: 'MNT', CROUSDT: 'CRO', VETUSDT: 'VET', MKRUSDT: 'MKR',
+  GRTUSDT: 'GRT', LDOUSDT: 'LDO', TIAUSDT: 'TIA', RUNEUSDT: 'RUNE',
+  ARUSDT: 'AR', THETAUSDT: 'THETA', FTMUSDT: 'FTM', AAVEUSDT: 'AAVE',
+  ALGOUSDT: 'ALGO', FLOKIUSDT: 'FLOKI', QNTUSDT: 'QNT'
 };
 
-async function fetchPrice(exchange: string, symbol: string): Promise<ExchangePrice | null> {
-  const fetchDirect = async () => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    let url = '';
-    let ask = 0, bid = 0;
+const EXCHANGE_LABELS: Record<string, string> = {
+  binance: 'Binance', bybit: 'Bybit', okx: 'OKX', bitget: 'Bitget'
+};
 
-    switch (exchange) {
-      case 'binance':
-        url = `https://api.binance.com/api/v3/ticker/bookTicker?symbol=${symbol}`;
-        const resBin = await fetch(url, { signal: controller.signal }).then(r => r.json());
-        ask = parseFloat(resBin.askPrice); bid = parseFloat(resBin.bidPrice);
-        break;
-      case 'bybit':
-        url = `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`;
-        const resByb = await fetch(url, { signal: controller.signal }).then(r => r.json());
-        ask = parseFloat(resByb.result.list[0].ask1Price); bid = parseFloat(resByb.result.list[0].bid1Price);
-        break;
-      case 'mexc':
-        url = `https://api.mexc.com/api/v3/ticker/bookTicker?symbol=${symbol}`;
-        const resMexc = await fetch(url, { signal: controller.signal }).then(r => r.json());
-        ask = parseFloat(resMexc.askPrice); bid = parseFloat(resMexc.bidPrice);
-        break;
-      case 'kucoin':
-        const kSym = symbol.replace('USDT', '-USDT');
-        url = `https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kSym}`;
-        const resKuc = await fetch(url, { signal: controller.signal }).then(r => r.json());
-        ask = parseFloat(resKuc.data.bestAsk); bid = parseFloat(resKuc.data.bestBid);
-        break;
-      case 'okx':
-        const oSym = symbol.replace('USDT', '-USDT');
-        url = `https://www.okx.com/api/v5/market/ticker?instId=${oSym}`;
-        const resOkx = await fetch(url, { signal: controller.signal }).then(r => r.json());
-        ask = parseFloat(resOkx.data[0].askPx); bid = parseFloat(resOkx.data[0].bidPx);
-        break;
-      case 'bitget':
-        url = `https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`;
-        const resBit = await fetch(url, { signal: controller.signal }).then(r => r.json());
-        ask = parseFloat(resBit.data[0].askPr); bid = parseFloat(resBit.data[0].bidPr);
-        break;
-      case 'gateio':
-        const gSym = symbol.replace('USDT', '_USDT');
-        url = `https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${gSym}`;
-        const resGate = await fetch(url, { signal: controller.signal }).then(r => r.json());
-        ask = parseFloat(resGate[0].lowest_ask); bid = parseFloat(resGate[0].highest_bid);
-        break;
-      case 'kraken':
-        let krSym = symbol;
-        if (symbol === 'BTCUSDT') krSym = 'XBTUSDT';
-        url = `https://api.kraken.com/0/public/Ticker?pair=${krSym}`;
-        const resKr = await fetch(url, { signal: controller.signal }).then(r => r.json());
-        const pairKey = Object.keys(resKr.result)[0];
-        ask = parseFloat(resKr.result[pairKey].a[0]); bid = parseFloat(resKr.result[pairKey].b[0]);
-        break;
-    }
-    clearTimeout(timeout);
-    return { ask, bid };
-  };
-
+// Fetchers masivos — 1 sola petición por exchange trae TODAS las monedas
+async function fetchBinanceBulk() {
   try {
-    let prices;
-    try {
-      prices = await fetchDirect();
-    } catch (e) {
-      // Proxy fallback si bloquea CORS o adblock
-      const res = await fetch(`/api/crypto?exchange=${exchange}&symbol=${symbol}&type=both`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      prices = data;
+    const data = await fetch('https://api.binance.com/api/v3/ticker/bookTicker').then(r => r.json());
+    const map = new Map<string, {ask: number, bid: number}>();
+    if (Array.isArray(data)) {
+      data.forEach((t: any) => {
+        if (TOP_COINS.includes(t.symbol)) map.set(t.symbol, { ask: parseFloat(t.askPrice), bid: parseFloat(t.bidPrice) });
+      });
     }
+    return map;
+  } catch { return new Map(); }
+}
 
-    if (!prices || !prices.ask || !prices.bid || isNaN(prices.ask) || isNaN(prices.bid)) return null;
-    return { exchange, ask: prices.ask, bid: prices.bid };
-  } catch {
-    return null;
-  }
+async function fetchBybitBulk() {
+  try {
+    const data = await fetch('https://api.bybit.com/v5/market/tickers?category=spot').then(r => r.json());
+    const map = new Map<string, {ask: number, bid: number}>();
+    if (data?.result?.list) {
+      data.result.list.forEach((t: any) => {
+        if (TOP_COINS.includes(t.symbol)) map.set(t.symbol, { ask: parseFloat(t.ask1Price), bid: parseFloat(t.bid1Price) });
+      });
+    }
+    return map;
+  } catch { return new Map(); }
+}
+
+async function fetchBitgetBulk() {
+  try {
+    const data = await fetch('https://api.bitget.com/api/v2/spot/market/tickers').then(r => r.json());
+    const map = new Map<string, {ask: number, bid: number}>();
+    if (data?.data) {
+      data.data.forEach((t: any) => {
+        if (TOP_COINS.includes(t.symbol)) map.set(t.symbol, { ask: parseFloat(t.askPr), bid: parseFloat(t.bidPr) });
+      });
+    }
+    return map;
+  } catch { return new Map(); }
+}
+
+async function fetchOkxBulk() {
+  try {
+    const data = await fetch('https://www.okx.com/api/v5/market/ticker?instType=SPOT').then(r => r.json());
+    const map = new Map<string, {ask: number, bid: number}>();
+    if (data?.data) {
+      data.data.forEach((t: any) => {
+        const sym = t.instId.replace('-', '');
+        if (TOP_COINS.includes(sym)) map.set(sym, { ask: parseFloat(t.askPx), bid: parseFloat(t.bidPx) });
+      });
+    }
+    return map;
+  } catch { return new Map(); }
 }
 
 export default function SpreadScanner() {
@@ -120,52 +105,62 @@ export default function SpreadScanner() {
 
   const scanSpreads = useCallback(async () => {
     setIsScanning(true);
+
+    // 4 peticiones en paralelo — trae TODAS las monedas de golpe
+    const [binance, bybit, bitget, okx] = await Promise.all([
+      fetchBinanceBulk(), fetchBybitBulk(), fetchBitgetBulk(), fetchOkxBulk()
+    ]);
+
+    const exchanges = [
+      { name: 'binance', data: binance },
+      { name: 'bybit', data: bybit },
+      { name: 'bitget', data: bitget },
+      { name: 'okx', data: okx }
+    ];
+
+    let online = exchanges.filter(e => e.data.size > 0).length;
+    let scanned = 0;
     const allSpreads: SpreadResult[] = [];
-    let onlineCount = 0;
-    let scannedCount = 0;
 
-    for (const pair of PAIRS) {
-      const promises = EXCHANGES.map(ex => fetchPrice(ex, pair.symbol));
-      const results = await Promise.all(promises);
-      const validPrices = results.filter((r): r is ExchangePrice => r !== null);
-      
-      onlineCount = Math.max(onlineCount, validPrices.length);
-      scannedCount += validPrices.length;
+    for (const symbol of TOP_COINS) {
+      let bestBuy = { exchange: '', price: Infinity };
+      let bestSell = { exchange: '', price: 0 };
 
-      // Calculate spreads between all pairs of exchanges
-      for (let i = 0; i < validPrices.length; i++) {
-        for (let j = 0; j < validPrices.length; j++) {
-          if (i === j) continue;
-          // Buy at exchange i (ask), sell at exchange j (bid)
-          const buyAt = validPrices[i].ask;
-          const sellAt = validPrices[j].bid;
-          const spread = ((sellAt - buyAt) / buyAt) * 100;
-          
+      for (const ex of exchanges) {
+        const prices = ex.data.get(symbol);
+        if (prices && prices.ask > 0 && prices.bid > 0) {
+          scanned++;
+          if (prices.ask < bestBuy.price) bestBuy = { exchange: ex.name, price: prices.ask };
+          if (prices.bid > bestSell.price) bestSell = { exchange: ex.name, price: prices.bid };
+        }
+      }
+
+      if (bestBuy.exchange && bestSell.exchange && bestBuy.exchange !== bestSell.exchange) {
+        const spread = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
+        if (spread > -5 && spread < 10) {
           allSpreads.push({
-            pair: pair.symbol,
-            pairLabel: `${pair.icon} ${pair.label}`,
-            buyExchange: validPrices[i].exchange,
-            sellExchange: validPrices[j].exchange,
-            buyPrice: buyAt,
-            sellPrice: sellAt,
+            pair: symbol,
+            pairLabel: COIN_LABELS[symbol] || symbol.replace('USDT', ''),
+            buyExchange: bestBuy.exchange,
+            sellExchange: bestSell.exchange,
+            buyPrice: bestBuy.price,
+            sellPrice: bestSell.price,
             spreadPercent: spread,
           });
         }
       }
     }
 
-    // Sort by spread descending and take top 5
     allSpreads.sort((a, b) => b.spreadPercent - a.spreadPercent);
-    setSpreads(allSpreads.slice(0, 5));
-    setExchangesOnline(onlineCount);
-    setTotalScanned(scannedCount);
+    setSpreads(allSpreads.slice(0, 10));
+    setExchangesOnline(online);
+    setTotalScanned(scanned);
     setLastUpdate(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     setIsScanning(false);
     setCountdown(30);
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     scanSpreads();
     const interval = setInterval(scanSpreads, 30000);
     return () => clearInterval(interval);
@@ -195,9 +190,9 @@ export default function SpreadScanner() {
         <div className="spread-scanner-title">
           <span className="scanner-icon">📡</span>
           <div>
-            <h2>Scanner de Spreads en Tiempo Real (Mercado Spot)</h2>
+            <h2>Scanner de Spreads en Tiempo Real (47 Monedas × 4 Exchanges)</h2>
             <p className="scanner-subtitle">
-              {exchangesOnline} exchanges conectados • {totalScanned} precios escaneados
+              {exchangesOnline} exchanges conectados • {totalScanned} precios escaneados • {TOP_COINS.length} monedas
               {lastUpdate && <> • Última actualización: {lastUpdate}</>}
             </p>
           </div>
@@ -213,13 +208,13 @@ export default function SpreadScanner() {
 
       <div style={{ backgroundColor: 'rgba(255, 165, 0, 0.1)', borderLeft: '4px solid #FFA500', padding: '12px', margin: '0 0 15px 0', borderRadius: '4px', fontSize: '13px', color: 'var(--text-muted)' }}>
         <strong>⚠️ Atención: Mercado Spot Global</strong><br/>
-        Este escáner rastrea precios de criptomonedas puras (Ej. BTC/USDT) entre exchanges mundiales. Las oportunidades aquí <strong>NO incluyen comisiones de retiro de red</strong> (gas fees). Solo es rentable para capitales altos donde la ganancia supera la tarifa de transferencia del exchange. Para arbitraje local con dinero fiat (Ej. Bolívares o Pesos), usa la pestaña de Arbitraje P2P.
+        Este escáner rastrea las <strong>47 criptomonedas más grandes</strong> del mundo entre Binance, Bybit, OKX y Bitget en tiempo real. Las oportunidades aquí <strong>NO incluyen comisiones de retiro de red</strong> (gas fees). Usa la calculadora para un análisis preciso.
       </div>
 
       {isScanning && spreads.length === 0 ? (
         <div className="scanner-loading">
           <div className="scanner-pulse"></div>
-          <p>Conectando con exchanges globales...</p>
+          <p>Conectando con 4 exchanges globales...</p>
         </div>
       ) : spreads.length > 0 ? (
         <div className="spread-table-wrapper">
