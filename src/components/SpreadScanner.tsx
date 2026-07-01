@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
+import { getExchangeUrl } from '../lib/referrals';
 
 interface SpreadResult {
   pair: string;
@@ -183,6 +184,11 @@ export default function SpreadScanner() {
     return price.toFixed(6);
   };
 
+  const handleExchangeClick = async (exchangeName: string) => {
+    const url = await getExchangeUrl(exchangeName);
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="spread-scanner-container">
       <div className="spread-scanner-header">
@@ -237,10 +243,28 @@ export default function SpreadScanner() {
                   </td>
                   <td className="spread-pair">{s.pairLabel}</td>
                   <td className="spread-exchange">
-                    <span className="exchange-badge buy">{EXCHANGE_LABELS[s.buyExchange]}</span>
+                    <span 
+                      className="exchange-badge buy" 
+                      onClick={() => handleExchangeClick(s.buyExchange)} 
+                      style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                      title={`Ir a ${EXCHANGE_LABELS[s.buyExchange]}`}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      {EXCHANGE_LABELS[s.buyExchange]}
+                    </span>
                   </td>
                   <td className="spread-exchange">
-                    <span className="exchange-badge sell">{EXCHANGE_LABELS[s.sellExchange]}</span>
+                    <span 
+                      className="exchange-badge sell" 
+                      onClick={() => handleExchangeClick(s.sellExchange)} 
+                      style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                      title={`Ir a ${EXCHANGE_LABELS[s.sellExchange]}`}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      {EXCHANGE_LABELS[s.sellExchange]}
+                    </span>
                   </td>
                   <td className="spread-price">${formatPrice(s.buyPrice)}</td>
                   <td className="spread-price">${formatPrice(s.sellPrice)}</td>

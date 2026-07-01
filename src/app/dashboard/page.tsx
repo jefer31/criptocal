@@ -12,6 +12,7 @@ import MathCalculator from '../../components/MathCalculator';
 import ProfileSettings from '../../components/ProfileSettings';
 import AlertConfig from '../../components/AlertConfig';
 import PushNotificationManager from '../../components/PushNotificationManager';
+import ReferralSystem from '../../components/ReferralSystem';
 import AdBanner from '../../components/AdBanner';
 import PricingModal from '../../components/PricingModal';
 import VenezuelaRates from '../../components/VenezuelaRates';
@@ -203,13 +204,15 @@ export default function Home() {
           setAuthLoading(false);
           return;
         }
+        const ref = localStorage.getItem('criptocal_ref');
         const { error } = await supabase.auth.signUp({ 
           email, 
           password,
           options: {
             data: {
               username: username,
-              phone: `${countryCode} ${phone}`
+              phone: `${countryCode} ${phone}`,
+              referred_by: ref || null
             }
           }
         });
@@ -509,6 +512,10 @@ export default function Home() {
               if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
               setActiveTab('perfil'); setIsSidebarOpen(false); 
             }}>⚙️ Mi Cuenta</div>
+            <div className={`menu-item ${activeTab === 'referidos' ? 'active' : ''}`} onClick={() => { 
+              if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
+              setActiveTab('referidos'); setIsSidebarOpen(false); 
+            }}>🤝 Mis Referidos</div>
             <div className="menu-item" onClick={() => { setShowTerms(true); setIsSidebarOpen(false); }}>⚖️ Términos Legales</div>
         </div>
 
@@ -579,6 +586,10 @@ export default function Home() {
 
         <div id="perfil-tab" className={`tab-content ${activeTab === 'perfil' ? 'active' : ''}`}>
             {activeTab === 'perfil' && <ProfileSettings />}
+        </div>
+
+        <div id="referidos-tab" className={`tab-content ${activeTab === 'referidos' ? 'active' : ''}`}>
+            {activeTab === 'referidos' && <ReferralSystem user={user} />}
         </div>
 
         <div id="alertas-tab" className={`tab-content ${activeTab === 'alertas' ? 'active' : ''}`}>

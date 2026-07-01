@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { getExchangeUrl } from '../lib/referrals';
 import { getDefaultNetworkFee } from '../data/networkFees';
 
 interface SavedRoute {
@@ -291,6 +292,12 @@ export default function SpotCalculator() {
     }
   };
 
+  const handleTradeClick = async (isBuy: boolean) => {
+    const exchange = isBuy ? exchangeSource : exchangeTarget;
+    const url = await getExchangeUrl(exchange);
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="standard-calc">
       <div className="calc-panel-box" onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') calculateSpotArbitrage(); }}>
@@ -448,6 +455,25 @@ export default function SpotCalculator() {
             </span>
           </div>
         </div>
+
+        {result && result.isPositive && (
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            <button 
+              className="btn-primary" 
+              style={{ flex: 1, backgroundColor: 'var(--success)', fontSize: '13px' }}
+              onClick={() => handleTradeClick(true)}
+            >
+              Comprar en {exchangeSource.toUpperCase()}
+            </button>
+            <button 
+              className="btn-primary" 
+              style={{ flex: 1, backgroundColor: 'var(--danger)', fontSize: '13px' }}
+              onClick={() => handleTradeClick(false)}
+            >
+              Vender en {exchangeTarget.toUpperCase()}
+            </button>
+          </div>
+        )}
 
         {result && (
           <div className="margin-status-alert" style={{
