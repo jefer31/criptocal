@@ -1,235 +1,258 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
 import webpush from 'web-push';
 
-// Configurar Web Push
 webpush.setVapidDetails(
   'mailto:soporte@criptocal.com',
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
   process.env.VAPID_PRIVATE_KEY || ''
 );
 
-// We need a server-role supabase client here because this will be called by an external CRON 
-// and needs to bypass RLS to read all users' alerts.
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // IMPORTANT: You need to add this env var
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-async function fetchPrice(exchange: string, symbol: string): Promise<{ ask: number; bid: number } | null> {
-  let ask = 0, bid = 0;
+// Lista de monedas sólidas/populares para evitar shitcoins sin liquidez
+const TOP_COINS = [
+  'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'DOGEUSDT', 
+  'TRXUSDT', 'TONUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'SHIBUSDT', 'BCHUSDT', 
+  'LINKUSDT', 'AVAXUSDT', 'NEARUSDT', 'UNIUSDT', 'ATOMUSDT', 'XLMUSDT', 'PEPEUSDT',
+  'ICPUSDT', 'FILUSDT', 'ETCUSDT', 'APTUSDT', 'STXUSDT', 'IMXUSDT', 'OPUSDT', 
+  'INJUSDT', 'RNDRUSDT', 'WIFUSDT', 'ARBUSDT', 'MNTUSDT', 'CROUSDT', 'VETUSDT',
+  'MKRUSDT', 'GRTUSDT', 'LDOUSDT', 'TIAUSDT', 'RUNEUSDT', 'ARUSDT', 'THETAUSDT',
+  'FTMUSDT', 'AAVEUSDT', 'ALGOUSDT', 'FLOKIUSDT', 'QNTUSDT'
+];
 
-  // Step 1: Try the exchange API (each wrapped in try-catch so geo-blocks don't abort)
+// Oportunidad detectada
+interface Opportunity {
+  pair: string;
+  buyExchange: string;
+  sellExchange: string;
+  buyPrice: number;
+  sellPrice: number;
+  spread: number;
+}
+
+// Fetchers masivos
+async function fetchBinance() {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const opts = { signal: controller.signal };
-
-    switch (exchange) {
-      case 'binance': {
-        try {
-          // Usamos data-api para evitar el bloqueo de IP de EE.UU a los servidores de Vercel
-          const res = await fetch(`https://data-api.binance.vision/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
-          if (res.askPrice) { ask = parseFloat(res.askPrice); bid = parseFloat(res.bidPrice); }
-        } catch (_) {}
-        break;
-      }
-      case 'bybit': {
-        try {
-          const res = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`, opts).then(r => r.json());
-          if (res.result?.list?.[0]) { ask = parseFloat(res.result.list[0].ask1Price); bid = parseFloat(res.result.list[0].bid1Price); }
-        } catch (_) {}
-        break;
-      }
-      case 'mexc': {
-        try {
-          const res = await fetch(`https://api.mexc.com/api/v3/ticker/bookTicker?symbol=${symbol}`, opts).then(r => r.json());
-          if (res.askPrice) { ask = parseFloat(res.askPrice); bid = parseFloat(res.bidPrice); }
-        } catch (_) {}
-        break;
-      }
-      case 'kucoin': {
-        try {
-          const kSym = symbol.replace('USDT', '-USDT');
-          const res = await fetch(`https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kSym}`, opts).then(r => r.json());
-          if (res.data?.bestAsk) { ask = parseFloat(res.data.bestAsk); bid = parseFloat(res.data.bestBid); }
-        } catch (_) {}
-        break;
-      }
-      case 'okx': {
-        try {
-          const oSym = symbol.replace('USDT', '-USDT');
-          const res = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${oSym}`, opts).then(r => r.json());
-          if (res.data?.[0]?.askPx) { ask = parseFloat(res.data[0].askPx); bid = parseFloat(res.data[0].bidPx); }
-        } catch (_) {}
-        break;
-      }
-      case 'bitget': {
-        try {
-          const res = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${symbol}`, opts).then(r => r.json());
-          if (res.data?.[0]?.askPr) { ask = parseFloat(res.data[0].askPr); bid = parseFloat(res.data[0].bidPr); }
-        } catch (_) {}
-        break;
-      }
-      default:
-        break;
+    const data = await fetch('https://data-api.binance.vision/api/v3/ticker/bookTicker').then(r => r.json());
+    const map = new Map<string, {ask: number, bid: number}>();
+    if (Array.isArray(data)) {
+      data.forEach((t: any) => {
+        if (TOP_COINS.includes(t.symbol)) map.set(t.symbol, { ask: parseFloat(t.askPrice), bid: parseFloat(t.bidPrice) });
+      });
     }
-    clearTimeout(timeout);
-  } catch (_) {
-    // Outer catch — exchange step failed entirely, continue to fallback
-  }
+    return map;
+  } catch (e) { return new Map(); }
+}
 
-  // Fallback a CoinGecko eliminado para evitar falsos positivos con spreads inventados
+async function fetchBybit() {
+  try {
+    const data = await fetch('https://api.bybit.com/v5/market/tickers?category=spot').then(r => r.json());
+    const map = new Map<string, {ask: number, bid: number}>();
+    if (data?.result?.list) {
+      data.result.list.forEach((t: any) => {
+        if (TOP_COINS.includes(t.symbol)) map.set(t.symbol, { ask: parseFloat(t.ask1Price), bid: parseFloat(t.bid1Price) });
+      });
+    }
+    return map;
+  } catch (e) { return new Map(); }
+}
 
-  if (ask > 0 && bid > 0 && !isNaN(ask) && !isNaN(bid)) {
-    return { ask, bid };
-  }
-  return null;
+async function fetchBitget() {
+  try {
+    const data = await fetch('https://api.bitget.com/api/v2/spot/market/tickers').then(r => r.json());
+    const map = new Map<string, {ask: number, bid: number}>();
+    if (data?.data) {
+      data.data.forEach((t: any) => {
+        if (TOP_COINS.includes(t.symbol)) map.set(t.symbol, { ask: parseFloat(t.askPr), bid: parseFloat(t.bidPr) });
+      });
+    }
+    return map;
+  } catch (e) { return new Map(); }
+}
+
+async function fetchOkx() {
+  try {
+    const data = await fetch('https://www.okx.com/api/v5/market/ticker?instType=SPOT').then(r => r.json());
+    const map = new Map<string, {ask: number, bid: number}>();
+    if (data?.data) {
+      data.data.forEach((t: any) => {
+        const sym = t.instId.replace('-', '');
+        if (TOP_COINS.includes(sym)) map.set(sym, { ask: parseFloat(t.askPx), bid: parseFloat(t.bidPx) });
+      });
+    }
+    return map;
+  } catch (e) { return new Map(); }
+}
+
+async function sendTelegramMessage(chatId: string, text: string) {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+    });
+  } catch (err) { console.error('Telegram error', err); }
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const debugMode = url.searchParams.get('debug') === 'true';
   const forceNotify = url.searchParams.get('force') === 'true';
+  const GLOBAL_SPREAD_THRESHOLD = forceNotify ? 0.01 : 1.0; // 1% para envíos globales
 
   const authHeader = request.headers.get('authorization');
   const cronKey = url.searchParams.get('cron_key');
   
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && cronKey !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  if (!TELEGRAM_BOT_TOKEN) {
-    return NextResponse.json({ error: 'Telegram Bot Token not configured', hasToken: false }, { status: 500 });
+    if (!debugMode) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   try {
-    // 1. Fetch all active alerts
-    const { data: alerts, error } = await supabase
-      .from('user_alerts')
-      .select('*')
-      .eq('is_active', true);
+    // 1. Descarga masiva del mercado global
+    const [binanceData, bybitData, bitgetData, okxData] = await Promise.all([
+      fetchBinance(), fetchBybit(), fetchBitget(), fetchOkx()
+    ]);
 
-    if (error) throw error;
-    if (!alerts || alerts.length === 0) {
-      return NextResponse.json({ message: 'No active alerts to process', alertCount: 0 });
+    const exchanges = [
+      { name: 'binance', data: binanceData },
+      { name: 'bybit', data: bybitData },
+      { name: 'bitget', data: bitgetData },
+      { name: 'okx', data: okxData }
+    ];
+
+    // 2. Cruce de Precios Global
+    const globalOpportunities: Opportunity[] = [];
+
+    for (const symbol of TOP_COINS) {
+      // Encontrar el exchange con el menor precio de venta (Mejor para Comprar - Ask)
+      let bestBuy = { exchange: '', price: Infinity };
+      // Encontrar el exchange con el mayor precio de compra (Mejor para Vender - Bid)
+      let bestSell = { exchange: '', price: 0 };
+
+      for (const ex of exchanges) {
+        const prices = ex.data.get(symbol);
+        if (prices && prices.ask > 0 && prices.bid > 0) {
+          if (prices.ask < bestBuy.price) bestBuy = { exchange: ex.name, price: prices.ask };
+          if (prices.bid > bestSell.price) bestSell = { exchange: ex.name, price: prices.bid };
+        }
+      }
+
+      // Validar si encontramos par válido en distintos exchanges
+      if (bestBuy.exchange && bestSell.exchange && bestBuy.exchange !== bestSell.exchange) {
+        const spread = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
+        
+        // Filtro de liquidez/salud (spread irreal > 10% probablemente es error de API o mercado cerrado)
+        if (spread >= GLOBAL_SPREAD_THRESHOLD && spread < 10) {
+          globalOpportunities.push({
+            pair: symbol,
+            buyExchange: bestBuy.exchange,
+            sellExchange: bestSell.exchange,
+            buyPrice: bestBuy.price,
+            sellPrice: bestSell.price,
+            spread
+          });
+        }
+      }
     }
 
-    let notificationsSent = 0;
-    const debugInfo: any[] = [];
+    // Ordenar las oportunidades globales por spread
+    globalOpportunities.sort((a, b) => b.spread - a.spread);
+    const topGlobal = globalOpportunities.slice(0, 3); // Solo enviamos las mejores 3 para no spamear
 
-    // 2. Process each alert
-    for (const alert of alerts) {
-      const alertDebug: any = {
-        alertId: alert.id,
-        pair: alert.pair,
-        chatId: alert.telegram_chat_id,
-        exchangeBuy: alert.exchange_buy,
-        exchangeSell: alert.exchange_sell,
-        minSpread: alert.min_spread,
-        isActive: alert.is_active,
-      };
+    let pushSentGlobal = 0;
 
-      const buyData: any = await fetchPrice(alert.exchange_buy, alert.pair);
-      const sellData: any = await fetchPrice(alert.exchange_sell, alert.pair);
+    // 3. ENVIAR NOTIFICACIONES GLOBALES A TODOS LOS USUARIOS
+    if (topGlobal.length > 0) {
+      const { data: allSubs } = await supabase.from('push_subscriptions').select('*');
+      
+      if (allSubs && allSubs.length > 0) {
+        for (const opp of topGlobal) {
+          const pushPayload = JSON.stringify({
+            title: `🌐 RADAR GLOBAL: ${opp.pair} (+${opp.spread.toFixed(2)}%)`,
+            body: `Compra en ${opp.buyExchange.toUpperCase()} a $${opp.buyPrice.toFixed(4)} y Vende en ${opp.sellExchange.toUpperCase()}`
+          });
 
-      alertDebug.buyDataRaw = buyData;
-      alertDebug.sellDataRaw = sellData;
-
-      if (buyData && sellData) {
-        const buyPrice = buyData.ask;
-        const sellPrice = sellData.bid;
-        
-        alertDebug.buyPrice = buyPrice;
-        alertDebug.sellPrice = sellPrice;
-
-        if (buyPrice > 0 && sellPrice > 0) {
-          const spread = ((sellPrice - buyPrice) / buyPrice) * 100;
-          alertDebug.spread = spread;
-          alertDebug.wouldNotify = spread >= alert.min_spread;
-
-          if (spread >= alert.min_spread || forceNotify) {
-            const message = `
-🚨 *OPORTUNIDAD DE ARBITRAJE* 🚨
-
-Par: *${alert.pair}*
-Comprar en: *${alert.exchange_buy.toUpperCase()}* ($${buyPrice.toFixed(2)})
-Vender en: *${alert.exchange_sell.toUpperCase()}* ($${sellPrice.toFixed(2)})
-
-✅ *Spread Bruto: ${spread.toFixed(4)}%*
-
-Calcula las comisiones y red en:
-[CriptoCal](https://criptocal.vercel.app)
-            `.trim();
-
-            const tgUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-            const tgRes = await fetch(tgUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: alert.telegram_chat_id,
-                text: message,
-                parse_mode: 'Markdown'
-              })
-            });
-            const tgResult = await tgRes.json();
-            alertDebug.telegramResponse = tgResult;
-            if (tgResult.ok) {
-              notificationsSent++;
+          for (const sub of allSubs) {
+            try {
+              await webpush.sendNotification({
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.p256dh, auth: sub.auth }
+              }, pushPayload);
+              pushSentGlobal++;
+            } catch (err: any) {
+              if (err.statusCode === 410 || err.statusCode === 404) {
+                await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+              }
             }
+          }
+        }
+      }
+    }
 
-            // --- ENVIAR WEB PUSH NATIVO ---
-            // Buscar si este usuario tiene suscripciones push activas
+    // 4. MANTENER LÓGICA DE ALERTAS PERSONALIZADAS DE LOS USUARIOS (Prioridad Baja)
+    // Extraemos solo lo que el usuario pidió y revisamos en nuestra data cacheada
+    const { data: userAlerts } = await supabase.from('user_alerts').select('*').eq('is_active', true);
+    
+    let notificationsSentPersonal = 0;
+    
+    if (userAlerts) {
+      for (const alert of userAlerts) {
+        // Encontrar data en caché
+        const exBuyData = exchanges.find(e => e.name === alert.exchange_buy)?.data.get(alert.pair);
+        const exSellData = exchanges.find(e => e.name === alert.exchange_sell)?.data.get(alert.pair);
+
+        if (exBuyData && exSellData) {
+          const buyP = exBuyData.ask;
+          const sellP = exSellData.bid;
+          const spread = ((sellP - buyP) / buyP) * 100;
+
+          if (spread >= alert.min_spread && spread < 15) { // Ignorar mayores a 15% (errores API)
+            // Telegram
+            if (alert.telegram_chat_id) {
+              const msg = `🚨 *Alerta Personalizada* 🚨\n\nPar: *${alert.pair}*\nComprar: *${alert.exchange_buy.toUpperCase()}* ($${buyP.toFixed(2)})\nVender: *${alert.exchange_sell.toUpperCase()}* ($${sellP.toFixed(2)})\n\nSpread Estimado: *${spread.toFixed(2)}%* 🚀`;
+              await sendTelegramMessage(alert.telegram_chat_id, msg);
+            }
+            
+            // Web Push Personal
             if (alert.user_id) {
-              const { data: subs } = await supabase
-                .from('push_subscriptions')
-                .select('*')
-                .eq('user_id', alert.user_id);
-              
+              const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('user_id', alert.user_id);
               if (subs && subs.length > 0) {
-                const pushPayload = JSON.stringify({
-                  title: '🚨 OPORTUNIDAD DE ARBITRAJE',
-                  body: `Compra ${alert.pair} en ${alert.exchange_buy.toUpperCase()} y vende en ${alert.exchange_sell.toUpperCase()} (+${spread.toFixed(2)}%)`
+                const payload = JSON.stringify({
+                  title: `🎯 ALERTA PERSONAL: ${alert.pair}`,
+                  body: `Tu alerta superó ${alert.min_spread}%. Spread actual: +${spread.toFixed(2)}%`
                 });
-
                 for (const sub of subs) {
                   try {
-                    const pushSub = {
+                    await webpush.sendNotification({
                       endpoint: sub.endpoint,
-                      keys: {
-                        p256dh: sub.p256dh,
-                        auth: sub.auth
-                      }
-                    };
-                    await webpush.sendNotification(pushSub, pushPayload);
-                    alertDebug.pushSent = true;
-                  } catch (pushErr: any) {
-                    console.error('Error enviando Web Push:', pushErr);
-                    // Si el error es 410 (Gone) o 404, significa que el usuario revocó el permiso. Lo borramos.
-                    if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
-                      await supabase.from('push_subscriptions').delete().eq('id', sub.id);
-                    }
-                  }
+                      keys: { p256dh: sub.p256dh, auth: sub.auth }
+                    }, payload);
+                    notificationsSentPersonal++;
+                  } catch (e) {}
                 }
               }
             }
-            // -----------------------------
           }
-        } else {
-          alertDebug.error = 'Prices are zero or negative';
         }
-      } else {
-        alertDebug.error = `Failed to fetch prices: buy=${!!buyData}, sell=${!!sellData}`;
       }
-
-      debugInfo.push(alertDebug);
     }
 
-    const responseBody: any = { success: true, processed: alerts.length, notificationsSent };
-    if (debugMode) responseBody.debug = debugInfo;
-    return NextResponse.json(responseBody);
+    return NextResponse.json({ 
+      success: true, 
+      marketScanned: TOP_COINS.length,
+      globalOpportunitiesFound: globalOpportunities.length,
+      globalPushSent: pushSentGlobal,
+      personalAlertsSent: notificationsSentPersonal,
+      topGlobal
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
