@@ -545,11 +545,6 @@ export default function Home() {
             <div  id="topHeaderClock">{currentTime}</div>
         </div>
 
-        {isClient && !user && trialDaysLeft !== null && trialDaysLeft > 0 && (
-          <div style={{ backgroundColor: 'var(--primary)', color: '#fff', padding: '10px', textAlign: 'center', fontSize: '14px', fontWeight: 'bold' }}>
-            Prueba Gratuita: Te quedan {trialDaysLeft} {trialDaysLeft === 1 ? 'día' : 'días'}. ¡Crea una cuenta para no perder el acceso!
-          </div>
-        )}
 
         <div id="instrucciones-tab" className={`tab-content ${activeTab === 'instrucciones' ? 'active' : ''}`}>
             {activeTab === 'instrucciones' && <InstructionsTab />}

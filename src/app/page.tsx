@@ -76,7 +76,7 @@ export default function LandingPage() {
         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-          Comenzar Prueba Gratis
+          Abrir Calculadora Gratis
         </Link>
       </header>
 
@@ -110,9 +110,9 @@ export default function LandingPage() {
 
           <div className="calc-panel-box" style={{ textAlign: 'center', padding: '40px 20px', border: '1px solid var(--neon-blue)' }}>
             <div style={{ fontSize: '48px', marginBottom: '20px' }}>🤖</div>
-            <h3 style={{ fontSize: '22px', marginBottom: '15px', color: 'var(--neon-blue)' }}>Alertas Bot (PRO)</h3>
+            <h3 style={{ fontSize: '22px', marginBottom: '15px', color: 'var(--neon-blue)' }}>Alertas Bot Gratis</h3>
             <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-              No pases horas mirando la pantalla. Configura tu rentabilidad mínima y nuestro bot de Telegram te avisará cuando haya una oportunidad.
+              No pases horas mirando la pantalla. Configura tu rentabilidad mínima y nuestro bot de Telegram te avisará cuando haya una oportunidad. Totalmente gratis.
             </p>
           </div>
 
