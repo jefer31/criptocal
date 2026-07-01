@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
-type ExchangeName = 'binance' | 'bybit' | 'okx' | 'kucoin';
+import { TOP_COINS, COIN_LABELS, ALL_EXCHANGES, ExchangeName } from '../lib/constants';
 
 export default function SpreadChart() {
   const [data, setData] = useState<any[]>([]);
@@ -13,20 +13,8 @@ export default function SpreadChart() {
   const [exchangeA, setExchangeA] = useState<ExchangeName>('binance');
   const [exchangeB, setExchangeB] = useState<ExchangeName>('bybit');
 
-  const PAIRS = [
-    { value: 'BTCUSDT', label: 'Bitcoin (BTC)' },
-    { value: 'ETHUSDT', label: 'Ethereum (ETH)' },
-    { value: 'SOLUSDT', label: 'Solana (SOL)' },
-    { value: 'BNBUSDT', label: 'Binance Coin (BNB)' },
-    { value: 'XRPUSDT', label: 'Ripple (XRP)' },
-  ];
-
-  const EXCHANGES = [
-    { value: 'binance', label: 'Binance' },
-    { value: 'bybit', label: 'Bybit' },
-    { value: 'okx', label: 'OKX' },
-    { value: 'kucoin', label: 'KuCoin' }
-  ];
+  const PAIRS = TOP_COINS.map(c => ({ value: c, label: COIN_LABELS[c] || c }));
+  const EXCHANGES = ALL_EXCHANGES;
 
   // Helper to get formatted symbol for specific exchange
   const getExchangeSymbol = (sym: string, ex: ExchangeName) => {
@@ -70,17 +58,61 @@ export default function SpreadChart() {
         });
       }
       else if (ex === 'kucoin') {
-        // KuCoin requires time to be in seconds
         const endAt = Math.floor(Date.now() / 1000);
         const startAt = endAt - (24 * 3600);
         const res = await fetch(`https://api.kucoin.com/api/v1/market/candles?type=1hour&symbol=${formattedSymbol}&startAt=${startAt}&endAt=${endAt}`);
         const json = await res.json();
         if (!json?.data || !Array.isArray(json.data)) throw new Error("Invalid format");
         json.data.forEach((candle: any) => {
-          // KuCoin time is candle[0] in seconds
           const ts = Math.floor((parseInt(candle[0]) * 1000) / 3600000) * 3600000;
-          map.set(ts, parseFloat(candle[2])); // KuCoin close price is index 2
+          map.set(ts, parseFloat(candle[2]));
         });
+      }
+      else if (ex === 'mexc') {
+        const res = await fetch(`https://api.mexc.com/api/v3/klines?symbol=${sym}&interval=60m&limit=24`);
+        const json = await res.json();
+        if (!Array.isArray(json)) throw new Error("Invalid format");
+        json.forEach((candle: any) => {
+          const ts = Math.floor(parseInt(candle[0]) / 3600000) * 3600000;
+          map.set(ts, parseFloat(candle[4]));
+        });
+      }
+      else if (ex === 'gateio') {
+        const gSym = sym.replace('USDT', '_USDT');
+        const res = await fetch(`https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${gSym}&interval=1h&limit=24`);
+        const json = await res.json();
+        if (!Array.isArray(json)) throw new Error("Invalid format");
+        json.forEach((candle: any) => {
+          // Gate.io candle[0] is timestamp in seconds
+          const ts = Math.floor((parseInt(candle[0]) * 1000) / 3600000) * 3600000;
+          map.set(ts, parseFloat(candle[2])); // Close price
+        });
+      }
+      else if (ex === 'bitget') {
+        const res = await fetch(`https://api.bitget.com/api/v2/spot/market/candles?symbol=${sym}&granularity=1h&limit=24`);
+        const json = await res.json();
+        if (!json?.data || !Array.isArray(json.data)) throw new Error("Invalid format");
+        json.data.forEach((candle: any) => {
+          const ts = Math.floor(parseInt(candle[0]) / 3600000) * 3600000;
+          map.set(ts, parseFloat(candle[4]));
+        });
+      }
+      else if (ex === 'kraken') {
+        let krSym = sym;
+        if (sym === 'BTCUSDT') krSym = 'XBTUSDT';
+        const res = await fetch(`https://api.kraken.com/0/public/OHLC?pair=${krSym}&interval=60`);
+        const json = await res.json();
+        if (!json?.result) throw new Error("Invalid format");
+        const pairKey = Object.keys(json.result)[0];
+        const klines = json.result[pairKey];
+        if (Array.isArray(klines)) {
+          // Kraken gives the last 720 candles, we just need to iterate backwards or take the last 24
+          const last24 = klines.slice(-24);
+          last24.forEach((candle: any) => {
+            const ts = Math.floor((parseInt(candle[0]) * 1000) / 3600000) * 3600000;
+            map.set(ts, parseFloat(candle[4]));
+          });
+        }
       }
     } catch (error) {
       console.warn(`Error fetching ${ex} klines:`, error);

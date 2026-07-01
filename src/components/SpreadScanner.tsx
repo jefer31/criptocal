@@ -12,34 +12,12 @@ interface SpreadResult {
   spreadPercent: number;
 }
 
-const TOP_COINS = [
-  'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'DOGEUSDT', 
-  'TRXUSDT', 'TONUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'SHIBUSDT', 'BCHUSDT', 
-  'LINKUSDT', 'AVAXUSDT', 'NEARUSDT', 'UNIUSDT', 'ATOMUSDT', 'XLMUSDT', 'PEPEUSDT',
-  'ICPUSDT', 'FILUSDT', 'ETCUSDT', 'APTUSDT', 'STXUSDT', 'IMXUSDT', 'OPUSDT', 
-  'INJUSDT', 'RNDRUSDT', 'WIFUSDT', 'ARBUSDT', 'MNTUSDT', 'CROUSDT', 'VETUSDT',
-  'MKRUSDT', 'GRTUSDT', 'LDOUSDT', 'TIAUSDT', 'RUNEUSDT', 'ARUSDT', 'THETAUSDT',
-  'FTMUSDT', 'AAVEUSDT', 'ALGOUSDT', 'FLOKIUSDT', 'QNTUSDT'
-];
-
-const COIN_LABELS: Record<string, string> = {
-  BTCUSDT: '₿ BTC', ETHUSDT: 'Ξ ETH', SOLUSDT: '◎ SOL', XRPUSDT: '✕ XRP',
-  BNBUSDT: '◆ BNB', ADAUSDT: '♦ ADA', DOGEUSDT: 'Ð DOGE', TRXUSDT: '✧ TRX',
-  TONUSDT: '💎 TON', DOTUSDT: '● DOT', MATICUSDT: '⬟ MATIC', LTCUSDT: 'Ł LTC',
-  SHIBUSDT: '🐕 SHIB', BCHUSDT: 'Ƀ BCH', LINKUSDT: '⬡ LINK', AVAXUSDT: '▲ AVAX',
-  NEARUSDT: 'Ⓝ NEAR', UNIUSDT: '🦄 UNI', ATOMUSDT: '⚛ ATOM', XLMUSDT: '★ XLM',
-  PEPEUSDT: '🐸 PEPE', ICPUSDT: '∞ ICP', FILUSDT: '⨎ FIL', ETCUSDT: 'ξ ETC',
-  APTUSDT: 'APT', STXUSDT: 'STX', IMXUSDT: 'IMX', OPUSDT: 'OP',
-  INJUSDT: 'INJ', RNDRUSDT: 'RNDR', WIFUSDT: 'WIF', ARBUSDT: 'ARB',
-  MNTUSDT: 'MNT', CROUSDT: 'CRO', VETUSDT: 'VET', MKRUSDT: 'MKR',
-  GRTUSDT: 'GRT', LDOUSDT: 'LDO', TIAUSDT: 'TIA', RUNEUSDT: 'RUNE',
-  ARUSDT: 'AR', THETAUSDT: 'THETA', FTMUSDT: 'FTM', AAVEUSDT: 'AAVE',
-  ALGOUSDT: 'ALGO', FLOKIUSDT: 'FLOKI', QNTUSDT: 'QNT'
-};
+import { TOP_COINS, COIN_LABELS } from '../lib/constants';
 
 const EXCHANGE_LABELS: Record<string, string> = {
   binance: 'Binance', bybit: 'Bybit', okx: 'OKX', bitget: 'Bitget'
 };
+
 
 // Fetchers masivos — 1 sola petición por exchange trae TODAS las monedas
 async function fetchBinanceBulk() {
