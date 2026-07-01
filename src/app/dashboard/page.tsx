@@ -597,7 +597,7 @@ export default function Home() {
             {activeTab === 'alertas' && (
               <>
                 <PushNotificationManager />
-                <AlertConfig isPremium={true} onUpgrade={() => setShowPricingModal(true)} />
+                <AlertConfig />
               </>
             )}
         </div>

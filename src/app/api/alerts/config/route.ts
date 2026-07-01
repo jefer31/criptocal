@@ -57,12 +57,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const isVip = isVipAdmin(user.email);
-    const isPremium = user.user_metadata?.is_premium;
-    
-    if (!isVip && !isPremium) {
-      return NextResponse.json({ error: 'Premium required to save alerts' }, { status: 403 });
-    }
+    // Alertas disponibles para todos los usuarios (ya no requiere PRO)
 
     const body = await request.json();
     const { id, pair, exchange_buy, exchange_sell, min_spread, telegram_chat_id, is_active } = body;

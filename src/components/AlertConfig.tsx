@@ -76,7 +76,7 @@ EXCHANGES.forEach(e => { EXCHANGE_LABELS[e.value] = e.label; });
 
 const MAX_ALERTS = 5;
 
-export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremium?: boolean; onUpgrade?: () => void }) {
+export default function AlertConfig() {
   const [alerts, setAlerts] = useState<AlertConfigType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -141,11 +141,7 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
 
   const handleSave = async () => {
     const isVipAdminSave = isVipAdmin(userEmail);
-    if (!isPremium && !isVipAdminSave) {
-      toast.error('Las alertas automáticas son una función PRO. Actualiza tu plan para activarlas.');
-      onUpgrade?.();
-      return;
-    }
+
     if (!chatId) {
       toast.error('Necesitas ingresar tu Chat ID de Telegram para recibir alertas.');
       return;
@@ -271,24 +267,7 @@ export default function AlertConfig({ isPremium = false, onUpgrade }: { isPremiu
   if (loading) return <div className="p-8 text-center text-gray-400">Cargando configuración...</div>;
   if (!userId) return <div className="p-8 text-center text-red-400">⚠️ Necesitas iniciar sesión para configurar alertas.</div>;
 
-  const isVipAdminCheck = isVipAdmin(userEmail);
-  
-  if (!isPremium && !isVipAdminCheck) {
-    return (
-      <div className="standard-calc">
-        <div className="calc-panel-box" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '15px' }}>🔒</div>
-          <h3 style={{ marginBottom: '10px' }}>Función PRO: Alertas Automáticas por Telegram</h3>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', lineHeight: '1.6' }}>
-            Con PRO, nuestros servidores escanean los exchanges 24/7 y te envían alertas instantáneas a Telegram cuando detectan spreads rentables.
-          </p>
-          <button className="btn-primary" onClick={() => onUpgrade?.()}>
-            🚀 Desbloquear Alertas PRO
-          </button>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="standard-calc">
