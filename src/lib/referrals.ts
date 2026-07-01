@@ -47,10 +47,10 @@ export async function getExchangeUrl(exchange: string, defaultUrl: string = '') 
   const lowerExchange = exchange.toLowerCase();
 
   // Códigos por defecto del dueño de la app
-  const defaultBinance = 'CPA_00O4X1';
+  const defaultBinance = '746465101';
   const defaultBitget = '';
   const defaultBybit = '';
-  const defaultOkx = '';
+  const defaultOkx = '46866734';
 
   if (lowerExchange.includes('binance')) {
     const refCode = referrer && referrer.binance_ref ? referrer.binance_ref : defaultBinance;
