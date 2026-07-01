@@ -49,7 +49,7 @@ export async function getExchangeUrl(exchange: string, defaultUrl: string = '') 
   // Códigos por defecto del dueño de la app
   const defaultBinance = '746465101';
   const defaultBitget = '';
-  const defaultBybit = '';
+  const defaultBybit = 'YVDXZQ';
   const defaultOkx = '46866734';
 
   if (lowerExchange.includes('binance')) {
