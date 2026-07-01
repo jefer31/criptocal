@@ -8,6 +8,7 @@ export default function SpreadChart() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [partialDataWarning, setPartialDataWarning] = useState<string | null>(null);
   
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [exchangeA, setExchangeA] = useState<ExchangeName>('binance');
@@ -133,6 +134,16 @@ export default function SpreadChart() {
           fetchKlines(exchangeB, symbol)
         ]);
 
+        let missing = [];
+        if (mapA.size === 0) missing.push(exchangeA);
+        if (mapB.size === 0) missing.push(exchangeB);
+
+        if (missing.length === 2) {
+           throw new Error("Datos históricos no disponibles temporalmente para esta moneda en estos exchanges.");
+        } else if (missing.length === 1) {
+           setPartialDataWarning(`⚠️ ${missing[0].toUpperCase()} no dispone de gráficos públicos para esta moneda. Mostrando datos parciales.`);
+        }
+
         const result: any[] = [];
         const allHours = Array.from(new Set([...mapA.keys(), ...mapB.keys()])).sort((a, b) => a - b);
 
@@ -176,10 +187,10 @@ export default function SpreadChart() {
         <div style={{ background: '#1a1a25', border: '1px solid #2a2a35', padding: '10px', borderRadius: '8px' }}>
           <p style={{ color: '#e1e1e6', fontWeight: 'bold', margin: '0 0 5px 0' }}>Hora: {label}</p>
           <p style={{ color: '#00adb5', margin: '0 0 2px 0', textTransform: 'capitalize' }}>
-            {exchangeA} (Compra): ${point.priceA.toLocaleString()}
+            {exchangeA} (Compra): {point.priceA ? `$${point.priceA.toLocaleString()}` : 'N/A'}
           </p>
           <p style={{ color: '#ffb74d', margin: '0 0 5px 0', textTransform: 'capitalize' }}>
-            {exchangeB} (Venta): ${point.priceB.toLocaleString()}
+            {exchangeB} (Venta): {point.priceB ? `$${point.priceB.toLocaleString()}` : 'N/A'}
           </p>
           <p style={{ 
             color: point.spreadPercent > 0 ? '#00e676' : '#ff5252', 
@@ -226,6 +237,20 @@ export default function SpreadChart() {
             </select>
           </div>
         </div>
+
+        {partialDataWarning && !error && !loading && (
+          <div style={{ 
+            marginTop: '15px', 
+            padding: '10px 15px', 
+            background: 'rgba(255, 183, 77, 0.1)', 
+            border: '1px solid var(--warning)', 
+            borderRadius: '6px', 
+            color: 'var(--warning)', 
+            fontSize: '14px' 
+          }}>
+            {partialDataWarning}
+          </div>
+        )}
 
         {loading ? (
           <div style={{ height: '350px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)' }}>
