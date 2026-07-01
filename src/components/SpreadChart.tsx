@@ -133,10 +133,6 @@ export default function SpreadChart() {
           fetchKlines(exchangeB, symbol)
         ]);
 
-        if (mapA.size === 0 || mapB.size === 0) {
-          throw new Error("Datos históricos no disponibles temporalmente para estos exchanges.");
-        }
-
         const result: any[] = [];
         const allHours = Array.from(new Set([...mapA.keys(), ...mapB.keys()])).sort((a, b) => a - b);
 
@@ -144,16 +140,16 @@ export default function SpreadChart() {
           const priceA = mapA.get(hourMs);
           const priceB = mapB.get(hourMs);
 
-          if (priceA && priceB) {
-            const spreadPercent = ((priceB - priceA) / priceA) * 100;
+          if (priceA || priceB) {
+            const spreadPercent = (priceA && priceB) ? ((priceB - priceA) / priceA) * 100 : 0;
             const date = new Date(hourMs);
             const timeLabel = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 
             result.push({
               timestamp: hourMs,
               timeLabel,
-              priceA,
-              priceB,
+              priceA: priceA || null,
+              priceB: priceB || null,
               spreadPercent: parseFloat(spreadPercent.toFixed(4))
             });
           }
