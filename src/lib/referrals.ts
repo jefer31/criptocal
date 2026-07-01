@@ -46,11 +46,11 @@ export async function getExchangeUrl(exchange: string, defaultUrl: string = '') 
   const referrer = await getReferrerProfile();
   const lowerExchange = exchange.toLowerCase();
 
-  // Códigos por defecto de Jeferson (admin/dueño)
-  const defaultBinance = 'CPA_00O4X1'; // Reemplazar con el real
-  const defaultBitget = 'TU_BITGET'; // Reemplazar
-  const defaultBybit = 'TU_BYBIT'; // Reemplazar
-  const defaultOkx = 'TU_OKX'; // Reemplazar
+  // Códigos por defecto del dueño de la app
+  const defaultBinance = 'CPA_00O4X1';
+  const defaultBitget = '';
+  const defaultBybit = '';
+  const defaultOkx = '';
 
   if (lowerExchange.includes('binance')) {
     const refCode = referrer && referrer.binance_ref ? referrer.binance_ref : defaultBinance;

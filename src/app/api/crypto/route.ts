@@ -23,14 +23,16 @@ const fetchers: Record<string, (symbol: string, isBuy?: boolean) => Promise<any>
     return parseFloat(isBuy ? data.askPrice : data.bidPrice);
   },
   kucoin: async (sym, isBuy) => {
-    const kSym = sym.replace('USDT', '-USDT').replace('BTC', '-BTC');
+    const base = sym.replace('USDT', '');
+    const kSym = `${base}-USDT`;
     const res = await fetch(`https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kSym}`);
     const data = await res.json();
     if (isBuy === undefined) return { ask: parseFloat(data.data.bestAsk), bid: parseFloat(data.data.bestBid) };
     return parseFloat(isBuy ? data.data.bestAsk : data.data.bestBid);
   },
   okx: async (sym, isBuy) => {
-    const oSym = sym.replace('USDT', '-USDT').replace('BTC', '-BTC');
+    const oBase = sym.replace('USDT', '');
+    const oSym = `${oBase}-USDT`;
     const res = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${oSym}`);
     const data = await res.json();
     if (isBuy === undefined) return { ask: parseFloat(data.data[0].askPx), bid: parseFloat(data.data[0].bidPx) };
@@ -43,7 +45,8 @@ const fetchers: Record<string, (symbol: string, isBuy?: boolean) => Promise<any>
     return parseFloat(isBuy ? data.data[0].askPr : data.data[0].bidPr);
   },
   gateio: async (sym, isBuy) => {
-    const gSym = sym.replace('USDT', '_USDT').replace('BTC', '_BTC');
+    const gBase = sym.replace('USDT', '');
+    const gSym = `${gBase}_USDT`;
     const res = await fetch(`https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${gSym}`);
     const data = await res.json();
     if (isBuy === undefined) return { ask: parseFloat(data[0].lowest_ask), bid: parseFloat(data[0].highest_bid) };
