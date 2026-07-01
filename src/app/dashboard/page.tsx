@@ -11,6 +11,7 @@ import HistoryTable from '../../components/HistoryTable';
 import MathCalculator from '../../components/MathCalculator';
 import ProfileSettings from '../../components/ProfileSettings';
 import AlertConfig from '../../components/AlertConfig';
+import PushNotificationManager from '../../components/PushNotificationManager';
 import AdBanner from '../../components/AdBanner';
 import PricingModal from '../../components/PricingModal';
 import VenezuelaRates from '../../components/VenezuelaRates';
@@ -582,7 +583,12 @@ export default function Home() {
 
         <div id="alertas-tab" className={`tab-content ${activeTab === 'alertas' ? 'active' : ''}`}>
             {showAds && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
-            {activeTab === 'alertas' && <AlertConfig isPremium={true} onUpgrade={() => setShowPricingModal(true)} />}
+            {activeTab === 'alertas' && (
+              <>
+                <PushNotificationManager />
+                <AlertConfig isPremium={true} onUpgrade={() => setShowPricingModal(true)} />
+              </>
+            )}
         </div>
 
     </div>

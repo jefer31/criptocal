@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+import webpush from 'web-push';
+
+// Configurar Web Push
+webpush.setVapidDetails(
+  'mailto:soporte@criptocal.com',
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
+  process.env.VAPID_PRIVATE_KEY || ''
+);
 
 // We need a server-role supabase client here because this will be called by an external CRON 
 // and needs to bypass RLS to read all users' alerts.
@@ -170,6 +179,43 @@ Calcula las comisiones y red en:
             if (tgResult.ok) {
               notificationsSent++;
             }
+
+            // --- ENVIAR WEB PUSH NATIVO ---
+            // Buscar si este usuario tiene suscripciones push activas
+            if (alert.user_id) {
+              const { data: subs } = await supabase
+                .from('push_subscriptions')
+                .select('*')
+                .eq('user_id', alert.user_id);
+              
+              if (subs && subs.length > 0) {
+                const pushPayload = JSON.stringify({
+                  title: '🚨 OPORTUNIDAD DE ARBITRAJE',
+                  body: `Compra ${alert.pair} en ${alert.exchange_buy.toUpperCase()} y vende en ${alert.exchange_sell.toUpperCase()} (+${spread.toFixed(2)}%)`
+                });
+
+                for (const sub of subs) {
+                  try {
+                    const pushSub = {
+                      endpoint: sub.endpoint,
+                      keys: {
+                        p256dh: sub.p256dh,
+                        auth: sub.auth
+                      }
+                    };
+                    await webpush.sendNotification(pushSub, pushPayload);
+                    alertDebug.pushSent = true;
+                  } catch (pushErr: any) {
+                    console.error('Error enviando Web Push:', pushErr);
+                    // Si el error es 410 (Gone) o 404, significa que el usuario revocó el permiso. Lo borramos.
+                    if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+                      await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+                    }
+                  }
+                }
+              }
+            }
+            // -----------------------------
           }
         } else {
           alertDebug.error = 'Prices are zero or negative';
