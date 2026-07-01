@@ -254,7 +254,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ 
       success: true, 
       marketScanned: TOP_COINS.length,
-      globalOpportunitiesFound: globalOpportunities.length,
+      globalOpportunitiesFound: allOpportunities.length,
       globalPushSent: pushSentGlobal,
       personalAlertsSent: notificationsSentPersonal,
       topGlobal
