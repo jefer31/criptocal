@@ -126,6 +126,7 @@ export default function SpreadChart() {
     const loadData = async () => {
       setLoading(true);
       setError(null);
+      setPartialDataWarning(null);
       setData([]);
 
       try {
@@ -142,6 +143,8 @@ export default function SpreadChart() {
            throw new Error("Datos históricos no disponibles temporalmente para esta moneda en estos exchanges.");
         } else if (missing.length === 1) {
            setPartialDataWarning(`⚠️ ${missing[0].toUpperCase()} no dispone de gráficos públicos para esta moneda. Mostrando datos parciales.`);
+        } else {
+           setPartialDataWarning(null);
         }
 
         const result: any[] = [];
