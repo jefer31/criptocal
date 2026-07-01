@@ -97,6 +97,28 @@ export default function PushNotificationManager() {
     }
   }
 
+  async function unsubscribeFromPush() {
+    try {
+      setLoading(true);
+      if (subscription) {
+        await subscription.unsubscribe();
+        setSubscription(null);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.from('push_subscriptions').delete().eq('user_id', session.user.id);
+        }
+        
+        toast.success("Notificaciones desactivadas exitosamente");
+      }
+    } catch (error: any) {
+      console.error('Error desuscribiendo:', error);
+      toast.error("Hubo un error al desactivar las notificaciones");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (!isSupported) {
     return (
       <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg mb-4 text-center">
@@ -123,10 +145,19 @@ export default function PushNotificationManager() {
           {loading ? "Configurando..." : "Activar Notificaciones"}
         </button>
       ) : (
-        <span className="text-green-400 font-semibold flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-          Notificaciones Activas
-        </span>
+        <div className="flex flex-col items-center gap-3">
+          <span className="text-green-400 font-semibold flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+            Notificaciones Activas
+          </span>
+          <button 
+            onClick={unsubscribeFromPush}
+            disabled={loading}
+            className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 border border-red-500/20"
+          >
+            {loading ? "Desactivando..." : "Desactivar Notificaciones"}
+          </button>
+        </div>
       )}
     </div>
   );
