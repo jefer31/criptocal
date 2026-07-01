@@ -12,6 +12,10 @@ export default function ReferralSystem({ user }: { user: any }) {
   const [bitgetRef, setBitgetRef] = useState('');
   const [bybitRef, setBybitRef] = useState('');
   const [okxRef, setOkxRef] = useState('');
+  const [mexcRef, setMexcRef] = useState('');
+  const [kucoinRef, setKucoinRef] = useState('');
+  const [gateioRef, setGateioRef] = useState('');
+  const [krakenRef, setKrakenRef] = useState('');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -35,6 +39,10 @@ export default function ReferralSystem({ user }: { user: any }) {
         setBitgetRef(data.bitget_ref || '');
         setBybitRef(data.bybit_ref || '');
         setOkxRef(data.okx_ref || '');
+        setMexcRef(data.mexc_ref || '');
+        setKucoinRef(data.kucoin_ref || '');
+        setGateioRef(data.gateio_ref || '');
+        setKrakenRef(data.kraken_ref || '');
       }
     } catch (error) {
       console.error('Error loading referral profile', error);
@@ -58,6 +66,10 @@ export default function ReferralSystem({ user }: { user: any }) {
         bitget_ref: bitgetRef,
         bybit_ref: bybitRef,
         okx_ref: okxRef,
+        mexc_ref: mexcRef,
+        kucoin_ref: kucoinRef,
+        gateio_ref: gateioRef,
+        kraken_ref: krakenRef,
       };
 
       const { error } = await supabase
@@ -199,6 +211,58 @@ export default function ReferralSystem({ user }: { user: any }) {
             placeholder="ej: 12345678"
             value={okxRef}
             onChange={(e) => setOkxRef(e.target.value)}
+          />
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
+            ID Referido MEXC (Opcional)
+          </label>
+          <input
+            type="text"
+            className="input-field"
+            placeholder="ej: 12345"
+            value={mexcRef}
+            onChange={(e) => setMexcRef(e.target.value)}
+          />
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
+            ID Referido KuCoin (Opcional)
+          </label>
+          <input
+            type="text"
+            className="input-field"
+            placeholder="ej: rXXXX"
+            value={kucoinRef}
+            onChange={(e) => setKucoinRef(e.target.value)}
+          />
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
+            ID Referido Gate.io (Opcional)
+          </label>
+          <input
+            type="text"
+            className="input-field"
+            placeholder="ej: 123456"
+            value={gateioRef}
+            onChange={(e) => setGateioRef(e.target.value)}
+          />
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
+            ID Referido Kraken (Opcional)
+          </label>
+          <input
+            type="text"
+            className="input-field"
+            placeholder="ej: ABC"
+            value={krakenRef}
+            onChange={(e) => setKrakenRef(e.target.value)}
           />
         </div>
 
