@@ -111,7 +111,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const debugMode = url.searchParams.get('debug') === 'true';
   const forceNotify = url.searchParams.get('force') === 'true';
-  const GLOBAL_SPREAD_THRESHOLD = forceNotify ? 0.01 : 0.5; // 0.5% mínimo para envíos globales
+  const MIN_SPREAD_FLOOR = forceNotify ? 0.01 : 0.08; // Piso mínimo para filtrar ruido (no es umbral de envío)
+  const MAX_SPREAD_CEIL = 10; // Techo para filtrar errores de API
+  const TOP_N_TO_SEND = 3; // Solo enviar las mejores 3 oportunidades
 
   const authHeader = request.headers.get('authorization');
   const cronKey = url.searchParams.get('cron_key');
@@ -133,13 +135,11 @@ export async function GET(request: Request) {
       { name: 'okx', data: okxData }
     ];
 
-    // 2. Cruce de Precios Global
-    const globalOpportunities: Opportunity[] = [];
+    // 2. Cruce de Precios Global — recopilar TODAS las oportunidades válidas
+    const allOpportunities: Opportunity[] = [];
 
     for (const symbol of TOP_COINS) {
-      // Encontrar el exchange con el menor precio de venta (Mejor para Comprar - Ask)
       let bestBuy = { exchange: '', price: Infinity };
-      // Encontrar el exchange con el mayor precio de compra (Mejor para Vender - Bid)
       let bestSell = { exchange: '', price: 0 };
 
       for (const ex of exchanges) {
@@ -150,13 +150,12 @@ export async function GET(request: Request) {
         }
       }
 
-      // Validar si encontramos par válido en distintos exchanges
       if (bestBuy.exchange && bestSell.exchange && bestBuy.exchange !== bestSell.exchange) {
         const spread = ((bestSell.price - bestBuy.price) / bestBuy.price) * 100;
         
-        // Filtro de liquidez/salud (spread irreal > 10% probablemente es error de API o mercado cerrado)
-        if (spread >= GLOBAL_SPREAD_THRESHOLD && spread < 10) {
-          globalOpportunities.push({
+        // Solo filtrar ruido (spreads microscópicos) y errores (spreads absurdos)
+        if (spread >= MIN_SPREAD_FLOOR && spread < MAX_SPREAD_CEIL) {
+          allOpportunities.push({
             pair: symbol,
             buyExchange: bestBuy.exchange,
             sellExchange: bestSell.exchange,
@@ -168,34 +167,36 @@ export async function GET(request: Request) {
       }
     }
 
-    // Ordenar las oportunidades globales por spread
-    globalOpportunities.sort((a, b) => b.spread - a.spread);
-    const topGlobal = globalOpportunities.slice(0, 3); // Solo enviamos las mejores 3 para no spamear
+    // 3. Ordenar por mayor spread y tomar solo las TOP N mejores
+    allOpportunities.sort((a, b) => b.spread - a.spread);
+    const topGlobal = allOpportunities.slice(0, TOP_N_TO_SEND);
 
     let pushSentGlobal = 0;
 
-    // 3. ENVIAR NOTIFICACIONES GLOBALES A TODOS LOS USUARIOS
+    // 4. ENVIAR SOLO LAS MEJORES — sin spam, solo lo que más deja
     if (topGlobal.length > 0) {
       const { data: allSubs } = await supabase.from('push_subscriptions').select('*');
       
       if (allSubs && allSubs.length > 0) {
-        for (const opp of topGlobal) {
-          const pushPayload = JSON.stringify({
-            title: `🌐 RADAR GLOBAL: ${opp.pair} (+${opp.spread.toFixed(2)}%)`,
-            body: `Compra en ${opp.buyExchange.toUpperCase()} a $${opp.buyPrice.toFixed(4)} y Vende en ${opp.sellExchange.toUpperCase()}`
-          });
+        // Enviar UNA sola notificación consolidada con las mejores oportunidades
+        const topOpp = topGlobal[0]; // La mejor de todas
+        const extras = topGlobal.slice(1).map(o => `${o.pair.replace('USDT','')} +${o.spread.toFixed(2)}%`).join(' | ');
+        
+        const pushPayload = JSON.stringify({
+          title: `🏆 TOP ARBITRAJE: ${topOpp.pair.replace('USDT','')} → +${topOpp.spread.toFixed(2)}%`,
+          body: `Compra ${topOpp.buyExchange.toUpperCase()} → Vende ${topOpp.sellExchange.toUpperCase()} ($${topOpp.buyPrice.toFixed(4)} → $${topOpp.sellPrice.toFixed(4)})${extras ? '\n📊 También: ' + extras : ''}`
+        });
 
-          for (const sub of allSubs) {
-            try {
-              await webpush.sendNotification({
-                endpoint: sub.endpoint,
-                keys: { p256dh: sub.p256dh, auth: sub.auth }
-              }, pushPayload);
-              pushSentGlobal++;
-            } catch (err: any) {
-              if (err.statusCode === 410 || err.statusCode === 404) {
-                await supabase.from('push_subscriptions').delete().eq('id', sub.id);
-              }
+        for (const sub of allSubs) {
+          try {
+            await webpush.sendNotification({
+              endpoint: sub.endpoint,
+              keys: { p256dh: sub.p256dh, auth: sub.auth }
+            }, pushPayload);
+            pushSentGlobal++;
+          } catch (err: any) {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              await supabase.from('push_subscriptions').delete().eq('id', sub.id);
             }
           }
         }
