@@ -39,11 +39,10 @@ const AdBanner: React.FC<AdBannerProps> = ({ placement = 'top', onUpgrade }) => 
         Publicidad
       </div>
       
-      {/* A-Ads Real Ad Unit */}
       <div id="frame" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <iframe 
-          data-aa="2443965" 
-          src={`//ad.a-ads.com/2443965/?size=${adSize}`}
+          data-aa="2446460" 
+          src={`//ad.a-ads.com/2446460/?size=${adSize}`}
           style={{ border: 0, padding: 0, width: iframeWidth, height: iframeHeight, overflow: 'hidden', display: 'block', margin: 'auto' }}
           title="Crypto Advertisement"
         ></iframe>
