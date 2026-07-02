@@ -139,9 +139,19 @@ export default function SpreadScanner() {
   }, []);
 
   useEffect(() => {
-    scanSpreads();
-    const interval = setInterval(scanSpreads, 30000);
-    return () => clearInterval(interval);
+    let interval: NodeJS.Timeout;
+    
+    // Retrasar 600ms la primera petición masiva para que la interfaz de usuario 
+    // reaccione rápido al clic del menú y no se sienta "pegada" o "lenta".
+    const timeout = setTimeout(() => {
+      scanSpreads();
+      interval = setInterval(scanSpreads, 30000);
+    }, 600);
+    
+    return () => {
+      clearTimeout(timeout);
+      if (interval) clearInterval(interval);
+    };
   }, [scanSpreads]);
 
   useEffect(() => {
