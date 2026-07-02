@@ -3,6 +3,8 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
+import AdBanner from '../components/AdBanner';
+
 export default function LandingPage() {
   return (
     <div style={{ 
@@ -118,6 +120,11 @@ export default function LandingPage() {
 
         </div>
       </section>
+
+      {/* AdBanner so A-Ads bot can verify the root URL */}
+      <div style={{ maxWidth: '800px', margin: '40px auto 0 auto' }}>
+        <AdBanner placement="bottom" />
+      </div>
 
       {/* Footer */}
       <footer style={{
