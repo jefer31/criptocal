@@ -187,6 +187,17 @@ export async function GET(request: Request) {
           body: `Compra ${topOpp.buyExchange.toUpperCase()} → Vende ${topOpp.sellExchange.toUpperCase()} ($${topOpp.buyPrice.toFixed(4)} → $${topOpp.sellPrice.toFixed(4)})${extras ? '\n📊 También: ' + extras : ''}`
         });
 
+        // Novedad: Enviar también a Telegram Global si está configurado
+        if (process.env.GLOBAL_TELEGRAM_CHAT_ID) {
+          const tgMsg = `🏆 *TOP ARBITRAJE GLOBAL* 🚀\n\n` +
+                        `Par: *${topOpp.pair}*\n` +
+                        `Spread: *+${topOpp.spread.toFixed(2)}%*\n\n` +
+                        `🟢 Comprar en: *${topOpp.buyExchange.toUpperCase()}* ($${topOpp.buyPrice.toFixed(4)})\n` +
+                        `🔴 Vender en: *${topOpp.sellExchange.toUpperCase()}* ($${topOpp.sellPrice.toFixed(4)})\n` +
+                        (extras ? `\n📊 *Otras opciones:* ${extras}` : ``);
+          await sendTelegramMessage(process.env.GLOBAL_TELEGRAM_CHAT_ID, tgMsg);
+        }
+
         for (const sub of allSubs) {
           try {
             await webpush.sendNotification({
