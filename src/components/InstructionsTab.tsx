@@ -37,9 +37,19 @@ export default function InstructionsTab() {
             Buscar oportunidades manualmente toma mucho tiempo. El Robot hace el trabajo duro por ti 24/7.
             <br/><br/>
             <strong>Cómo usarlo:</strong>
-            <br/>1. Vincula tu Telegram hablando con nuestro bot para obtener tu Chat ID.
-            <br/>2. Crea alertas para tus pares favoritos (Ej: Comprar en Binance, Vender en Bybit).
-            <br/>3. Fija un "Spread Mínimo" (Ej: 0.5%). Si el robot detecta que el mercado supera ese spread, te escribirá inmediatamente a tu Telegram.
+            <br/>1. Ve a la pestaña de "Alertas Bot".
+            <br/>2. Activa las notificaciones en tu dispositivo para recibir alertas directamente en la pantalla de tu celular o PC.
+            <br/>3. Únete a nuestro Canal Privado VIP de Telegram haciendo clic en el botón gigante, ahí enviaremos las mejores oportunidades del mercado en tiempo real para que operes antes que nadie.
+          </p>
+
+          <h3 style={{ color: 'var(--primary)', marginBottom: '10px', fontSize: '18px' }}>🤝 Mis Referidos</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+            ¿No tienes cuenta en todos los exchanges o quieres ganar beneficios extra? Usa nuestro sistema de referidos.
+            <br/><br/>
+            <strong>Cómo usarlo:</strong>
+            <br/>1. Ve a la pestaña "Mis Referidos".
+            <br/>2. Registra tus cuentas nuevas en Binance, Bybit u OKX utilizando los enlaces proporcionados allí.
+            <br/>3. Al usar nuestros enlaces, apoyarás el mantenimiento de la plataforma y podrás acceder a descuentos en comisiones de trading en los respectivos exchanges.
           </p>
 
           <h3 style={{ color: 'var(--primary)', marginBottom: '10px', fontSize: '18px' }}>📋 Mis Operaciones</h3>
