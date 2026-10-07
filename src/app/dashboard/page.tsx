@@ -18,6 +18,7 @@ import PricingModal from '../../components/PricingModal';
 import VenezuelaRates from '../../components/VenezuelaRates';
 import InstructionsTab from '../../components/InstructionsTab';
 import SpreadChart from '../../components/SpreadChart';
+import MarketRadar from '../../components/MarketRadar';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Home() {
@@ -503,6 +504,9 @@ export default function Home() {
                             }}>
                                 <span>🔔</span> Alertas Bot
                             </div>
+                            <div className={`menu-item ${activeTab === 'radar' ? 'active' : ''}`} onClick={() => { setActiveTab('radar'); setIsSidebarOpen(false); }}>
+                                <span>📡</span> Radar de Mercado
+                            </div>
                             <div className={`menu-item ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => { 
               if (!user) { setShowAuthModal(true); setIsSidebarOpen(false); return; }
               setActiveTab('historial'); setIsSidebarOpen(false); 
@@ -540,7 +544,7 @@ export default function Home() {
                 <span></span>
             </button>
             <h2 id="mainContentTabTitle">
-                {activeTab === 'instrucciones' ? 'Guía de Uso Rápido' : activeTab === 'calculadora' ? 'Arbitraje P2P (Fiat)' : activeTab === 'spot' ? 'Escáner Spot (Cripto)' : activeTab === 'graficos' ? 'Analítica Visual' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
+                {activeTab === 'instrucciones' ? 'Guía de Uso Rápido' : activeTab === 'calculadora' ? 'Arbitraje P2P (Fiat)' : activeTab === 'spot' ? 'Escáner Spot (Cripto)' : activeTab === 'graficos' ? 'Analítica Visual' : activeTab === 'radar' ? 'Radar de Mercado' : activeTab === 'historial' ? 'Historial Local' : activeTab === 'matematica' ? 'Calculadora Común' : activeTab === 'alertas' ? 'Alertas Telegram' : 'Mi Cuenta'}
             </h2>
             <div  id="topHeaderClock">{currentTime}</div>
         </div>
@@ -595,6 +599,11 @@ export default function Home() {
                 <AlertConfig />
               </>
             )}
+        </div>
+
+        <div id="radar-tab" className={`tab-content ${activeTab === 'radar' ? 'active' : ''}`}>
+            {showAds && <AdBanner placement="top" onUpgrade={() => setShowPricingModal(true)} />}
+            {activeTab === 'radar' && <MarketRadar />}
         </div>
 
     </div>

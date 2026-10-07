@@ -52,6 +52,18 @@ export default function InstructionsTab() {
             <br/>3. Al usar nuestros enlaces, apoyarás el mantenimiento de la plataforma y podrás acceder a descuentos en comisiones de trading en los respectivos exchanges.
           </p>
 
+          <h3 style={{ color: 'var(--primary)', marginBottom: '10px', fontSize: '18px' }}>📡 Radar de Mercado</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Analiza la tendencia del mercado antes de operar. Esta sección te muestra indicadores técnicos profesionales en tiempo real para Criptomonedas y Forex.
+            <br/><br/>
+            <strong>Cómo usarlo:</strong>
+            <br/>1. Ve a la pestaña "Radar de Mercado" y elige entre Criptomonedas o Forex.
+            <br/>2. Selecciona el activo que quieres analizar (Ej: BTC/USDT, EUR/USD).
+            <br/>3. Elige la temporalidad que se ajuste a tu estilo de trading (1 min para scalping, 15 min para intradía, 1 hora para swing).
+            <br/>4. Observa el Medidor de Tendencia: si apunta a "Compra Fuerte" (verde) o "Venta Fuerte" (rojo) basado en más de 20 indicadores técnicos.
+            <br/>5. Revisa el gráfico de velas con RSI y MACD integrados para confirmar la tendencia antes de operar.
+          </p>
+
           <h3 style={{ color: 'var(--primary)', marginBottom: '10px', fontSize: '18px' }}>📋 Mis Operaciones</h3>
           <p style={{ color: 'var(--text-muted)' }}>
             Como un buen trader, debes llevar un registro. Cada vez que simules una operación rentable en cualquiera de las calculadoras, usa el botón "Guardar Operación" para enviarla a tu historial en la nube y descargar tus reportes en Excel.
