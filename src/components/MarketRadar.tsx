@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 
 const CRYPTO_SYMBOLS = [
   { value: 'BINANCE:BTCUSDT', label: '₿ Bitcoin (BTC/USDT)', short: 'BTC' },
@@ -28,118 +28,88 @@ const FOREX_SYMBOLS = [
 ];
 
 const INTERVALS = [
-  { value: '1', label: '1 min' },
-  { value: '5', label: '5 min' },
-  { value: '15', label: '15 min' },
-  { value: '30', label: '30 min' },
-  { value: '60', label: '1 hora' },
-  { value: '240', label: '4 horas' },
-  { value: 'D', label: '1 día' },
+  { value: '1', label: '1m' },
+  { value: '5', label: '5m' },
+  { value: '15', label: '15m' },
+  { value: '30', label: '30m' },
+  { value: '60', label: '1h' },
+  { value: '240', label: '4h' },
+  { value: 'D', label: '1D' },
 ];
 
 export default function MarketRadar() {
   const [market, setMarket] = useState<'crypto' | 'forex'>('crypto');
   const [selectedSymbol, setSelectedSymbol] = useState('BINANCE:BTCUSDT');
   const [interval, setInterval] = useState('15');
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const gaugeContainerRef = useRef<HTMLDivElement>(null);
 
   const symbols = market === 'crypto' ? CRYPTO_SYMBOLS : FOREX_SYMBOLS;
+  const currentShort = symbols.find(s => s.value === selectedSymbol)?.short || '';
 
-  // Load TradingView chart widget
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-    chartContainerRef.current.innerHTML = '';
-
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.type = 'text/javascript';
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      autosize: true,
+  // Build TradingView chart iframe URL
+  const chartUrl = useMemo(() => {
+    const params = new URLSearchParams({
       symbol: selectedSymbol,
       interval: interval,
-      timezone: "America/New_York",
-      theme: "dark",
-      style: "1",
-      locale: "es",
-      backgroundColor: "rgba(10, 10, 26, 1)",
-      gridColor: "rgba(255, 255, 255, 0.04)",
-      hide_top_toolbar: false,
-      hide_legend: false,
-      allow_symbol_change: false,
-      save_image: false,
-      calendar: false,
-      hide_volume: false,
-      support_host: "https://www.tradingview.com",
-      studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"],
+      theme: 'dark',
+      style: '1',
+      locale: 'es',
+      timezone: 'America/New_York',
+      hide_top_toolbar: '0',
+      hide_legend: '0',
+      allow_symbol_change: '0',
+      save_image: '0',
+      calendar: '0',
+      hide_volume: '0',
+      studies: 'RSI@tv-basicstudies,MACD@tv-basicstudies',
+      backgroundColor: 'rgba(10, 10, 26, 1)',
     });
-
-    const container = document.createElement('div');
-    container.className = 'tradingview-widget-container__widget';
-    container.style.height = '100%';
-    container.style.width = '100%';
-
-    chartContainerRef.current.appendChild(container);
-    chartContainerRef.current.appendChild(script);
+    return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
   }, [selectedSymbol, interval]);
 
-  // Load TradingView technical analysis gauge widget
-  useEffect(() => {
-    if (!gaugeContainerRef.current) return;
-    gaugeContainerRef.current.innerHTML = '';
-
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';
-    script.type = 'text/javascript';
-    script.async = true;
-    script.innerHTML = JSON.stringify({
+  // Build TradingView technical analysis iframe URL
+  const gaugeUrl = useMemo(() => {
+    const config = {
       interval: interval,
-      width: "100%",
+      width: '100%',
+      height: '100%',
       isTransparent: true,
-      height: "450",
       symbol: selectedSymbol,
       showIntervalTabs: true,
-      displayMode: "single",
-      locale: "es",
-      colorTheme: "dark",
-    });
-
-    const container = document.createElement('div');
-    container.className = 'tradingview-widget-container__widget';
-
-    gaugeContainerRef.current.appendChild(container);
-    gaugeContainerRef.current.appendChild(script);
+      displayMode: 'single',
+      locale: 'es',
+      colorTheme: 'dark',
+    };
+    return `https://s.tradingview.com/embed-widget/technical-analysis/?locale=es#${JSON.stringify(config)}`;
   }, [selectedSymbol, interval]);
 
   return (
     <div className="standard-calc">
-      {/* Market Selector */}
+      {/* Controls */}
       <div className="calc-panel-box">
         <div className="panel-title-bar">
           <span>📡</span> Radar de Mercado — Análisis Técnico en Tiempo Real
         </div>
 
         {/* Market type tabs */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <button
             onClick={() => { setMarket('crypto'); setSelectedSymbol('BINANCE:BTCUSDT'); }}
             className={market === 'crypto' ? 'btn-primary' : 'btn-secondary'}
-            style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 600 }}
+            style={{ flex: 1, padding: '11px 8px', fontSize: '13px', fontWeight: 600 }}
           >
-            🪙 Criptomonedas
+            🪙 Cripto
           </button>
           <button
             onClick={() => { setMarket('forex'); setSelectedSymbol('FX:EURUSD'); }}
             className={market === 'forex' ? 'btn-primary' : 'btn-secondary'}
-            style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 600 }}
+            style={{ flex: 1, padding: '11px 8px', fontSize: '13px', fontWeight: 600 }}
           >
             💱 Forex
           </button>
         </div>
 
         {/* Symbol selector */}
-        <div className="input-group" style={{ marginBottom: '10px' }}>
+        <div className="input-group" style={{ marginBottom: '12px' }}>
           <label>Activo a Analizar</label>
           <select
             value={selectedSymbol}
@@ -152,72 +122,108 @@ export default function MarketRadar() {
         </div>
 
         {/* Interval selector */}
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {INTERVALS.map(i => (
-            <button
-              key={i.value}
-              onClick={() => setInterval(i.value)}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '6px',
-                border: interval === i.value ? '1px solid var(--neon-blue)' : '1px solid var(--border)',
-                background: interval === i.value ? 'rgba(0, 173, 181, 0.15)' : 'rgba(255,255,255,0.03)',
-                color: interval === i.value ? 'var(--neon-blue)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: interval === i.value ? 700 : 400,
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {i.label}
-            </button>
-          ))}
+        <div>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Temporalidad</label>
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+            {INTERVALS.map(i => (
+              <button
+                key={i.value}
+                onClick={() => setInterval(i.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: interval === i.value ? '1px solid var(--neon-blue)' : '1px solid var(--border)',
+                  background: interval === i.value ? 'rgba(0, 173, 181, 0.15)' : 'rgba(255,255,255,0.03)',
+                  color: interval === i.value ? 'var(--neon-blue)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: interval === i.value ? 700 : 400,
+                  transition: 'all 0.2s ease',
+                  flex: '1 1 auto',
+                  textAlign: 'center',
+                  minWidth: '40px',
+                }}
+              >
+                {i.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Technical Analysis Gauge */}
-      <div className="calc-panel-box" style={{ marginTop: '15px' }}>
+      <div className="calc-panel-box" style={{ marginTop: '12px' }}>
         <div className="panel-title-bar">
-          <span>🧭</span> Medidor de Tendencia — {symbols.find(s => s.value === selectedSymbol)?.short || selectedSymbol}
+          <span>🧭</span> Medidor de Tendencia — {currentShort}
         </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '10px' }}>
-          Resumen basado en más de 20 indicadores técnicos (RSI, MACD, Medias Móviles, Estocástico, Williams %R, etc.)
+        <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px' }}>
+          Resumen basado en +20 indicadores técnicos (RSI, MACD, Medias Móviles, Estocástico, Williams %R, etc.)
         </p>
-        <div
-          ref={gaugeContainerRef}
-          className="tradingview-widget-container"
-          style={{ minHeight: '450px' }}
-        />
+        <div style={{
+          width: '100%',
+          height: '420px',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          background: 'rgba(0,0,0,0.2)',
+        }}>
+          <iframe
+            key={`gauge-${selectedSymbol}-${interval}`}
+            src={gaugeUrl}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              display: 'block',
+            }}
+            title={`Análisis Técnico ${currentShort}`}
+            allowFullScreen
+            loading="lazy"
+          />
+        </div>
       </div>
 
       {/* Candlestick Chart */}
-      <div className="calc-panel-box" style={{ marginTop: '15px' }}>
+      <div className="calc-panel-box" style={{ marginTop: '12px' }}>
         <div className="panel-title-bar">
-          <span>🕯️</span> Gráfico de Velas — {symbols.find(s => s.value === selectedSymbol)?.short || selectedSymbol}
+          <span>🕯️</span> Gráfico de Velas — {currentShort}
         </div>
-        <div
-          ref={chartContainerRef}
-          className="tradingview-widget-container"
-          style={{ height: '500px', minHeight: '400px' }}
-        />
+        <div style={{
+          width: '100%',
+          height: '450px',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          background: 'rgba(0,0,0,0.2)',
+        }}>
+          <iframe
+            key={`chart-${selectedSymbol}-${interval}`}
+            src={chartUrl}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              display: 'block',
+            }}
+            title={`Gráfico ${currentShort}`}
+            allowFullScreen
+            loading="lazy"
+          />
+        </div>
       </div>
 
       {/* Disclaimer */}
       <div className="calc-panel-box" style={{
-        marginTop: '15px',
+        marginTop: '12px',
         background: 'rgba(255, 82, 82, 0.05)',
         border: '1px solid rgba(255, 82, 82, 0.15)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '5px 0' }}>
-          <span style={{ fontSize: '24px' }}>⚠️</span>
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '12px', lineHeight: '1.6', margin: 0 }}>
-              <strong style={{ color: '#ff5252' }}>Aviso Legal:</strong> Esta herramienta es únicamente informativa y educativa.
-              Los indicadores técnicos y medidores de tendencia <strong>NO constituyen asesoría financiera</strong> ni recomendaciones de inversión.
-              El rendimiento pasado no garantiza resultados futuros. Operar con criptomonedas, divisas y derivados conlleva un alto riesgo de pérdida de capital.
-              Siempre haz tu propia investigación (DYOR) y consulta con un asesor financiero certificado antes de tomar decisiones de inversión.
-            </p>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '4px 0' }}>
+          <span style={{ fontSize: '22px' }}>⚠️</span>
+          <p style={{ color: 'var(--text-muted)', fontSize: '11px', lineHeight: '1.6', margin: 0 }}>
+            <strong style={{ color: '#ff5252' }}>Aviso Legal:</strong> Esta herramienta es únicamente informativa y educativa.
+            Los indicadores técnicos y medidores de tendencia <strong>NO constituyen asesoría financiera</strong> ni recomendaciones de inversión.
+            El rendimiento pasado no garantiza resultados futuros. Operar con criptomonedas, divisas y derivados conlleva un alto riesgo de pérdida de capital.
+            Siempre haz tu propia investigación (DYOR) antes de tomar decisiones de inversión.
+          </p>
         </div>
       </div>
     </div>
