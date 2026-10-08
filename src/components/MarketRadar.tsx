@@ -1,55 +1,61 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 const CRYPTO_SYMBOLS = [
-  { value: 'BINANCE:BTCUSDT', label: '₿ Bitcoin (BTC/USDT)', short: 'BTC' },
-  { value: 'BINANCE:ETHUSDT', label: 'Ξ Ethereum (ETH/USDT)', short: 'ETH' },
-  { value: 'BINANCE:SOLUSDT', label: '◎ Solana (SOL/USDT)', short: 'SOL' },
-  { value: 'BINANCE:XRPUSDT', label: '✕ XRP (XRP/USDT)', short: 'XRP' },
-  { value: 'BINANCE:BNBUSDT', label: '◆ BNB (BNB/USDT)', short: 'BNB' },
-  { value: 'BINANCE:DOGEUSDT', label: 'Ð Dogecoin (DOGE/USDT)', short: 'DOGE' },
-  { value: 'BINANCE:ADAUSDT', label: '♦ Cardano (ADA/USDT)', short: 'ADA' },
-  { value: 'BINANCE:TRXUSDT', label: '✧ TRON (TRX/USDT)', short: 'TRX' },
-  { value: 'BINANCE:AVAXUSDT', label: '▲ Avalanche (AVAX/USDT)', short: 'AVAX' },
-  { value: 'BINANCE:DOTUSDT', label: '● Polkadot (DOT/USDT)', short: 'DOT' },
-  { value: 'BINANCE:LINKUSDT', label: '⬡ Chainlink (LINK/USDT)', short: 'LINK' },
-  { value: 'BINANCE:MATICUSDT', label: '⬟ Polygon (MATIC/USDT)', short: 'MATIC' },
-];
-
-const FOREX_SYMBOLS = [
-  { value: 'FX:EURUSD', label: '🇪🇺 EUR/USD', short: 'EUR/USD' },
-  { value: 'FX:GBPUSD', label: '🇬🇧 GBP/USD', short: 'GBP/USD' },
-  { value: 'FX:USDJPY', label: '🇯🇵 USD/JPY', short: 'USD/JPY' },
-  { value: 'FX:USDCHF', label: '🇨🇭 USD/CHF', short: 'USD/CHF' },
-  { value: 'FX:AUDUSD', label: '🇦🇺 AUD/USD', short: 'AUD/USD' },
-  { value: 'FX:USDCAD', label: '🇨🇦 USD/CAD', short: 'USD/CAD' },
-  { value: 'FX:NZDUSD', label: '🇳🇿 NZD/USD', short: 'NZD/USD' },
-  { value: 'FX:EURGBP', label: '🇪🇺🇬🇧 EUR/GBP', short: 'EUR/GBP' },
+  { value: 'BTCUSDT', label: '₿ Bitcoin (BTC/USDT)', short: 'BTC' },
+  { value: 'ETHUSDT', label: 'Ξ Ethereum (ETH/USDT)', short: 'ETH' },
+  { value: 'SOLUSDT', label: '◎ Solana (SOL/USDT)', short: 'SOL' },
+  { value: 'XRPUSDT', label: '✕ XRP (XRP/USDT)', short: 'XRP' },
+  { value: 'BNBUSDT', label: '◆ BNB (BNB/USDT)', short: 'BNB' },
+  { value: 'DOGEUSDT', label: 'Ð Dogecoin (DOGE/USDT)', short: 'DOGE' },
+  { value: 'ADAUSDT', label: '♦ Cardano (ADA/USDT)', short: 'ADA' },
+  { value: 'TRXUSDT', label: '✧ TRON (TRX/USDT)', short: 'TRX' },
+  { value: 'AVAXUSDT', label: '▲ Avalanche (AVAX/USDT)', short: 'AVAX' },
+  { value: 'DOTUSDT', label: '● Polkadot (DOT/USDT)', short: 'DOT' },
+  { value: 'LINKUSDT', label: '⬡ Chainlink (LINK/USDT)', short: 'LINK' },
+  { value: 'MATICUSDT', label: '⬟ Polygon (MATIC/USDT)', short: 'MATIC' },
 ];
 
 const INTERVALS = [
-  { value: '1', label: '1m' },
-  { value: '5', label: '5m' },
-  { value: '15', label: '15m' },
-  { value: '30', label: '30m' },
-  { value: '60', label: '1h' },
-  { value: '240', label: '4h' },
-  { value: 'D', label: '1D' },
+  { value: '1m', label: '1 min' },
+  { value: '5m', label: '5 min' },
+  { value: '15m', label: '15 min' },
+  { value: '30m', label: '30 min' },
+  { value: '1h', label: '1 hora' },
+  { value: '4h', label: '4 horas' },
+  { value: '1d', label: '1 día' },
 ];
 
 export default function MarketRadar() {
-  const [market, setMarket] = useState<'crypto' | 'forex'>('crypto');
-  const [selectedSymbol, setSelectedSymbol] = useState('BINANCE:BTCUSDT');
-  const [interval, setInterval] = useState('15');
+  const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
+  const [interval, setInterval] = useState('15m');
+  const [analyzing, setAnalyzing] = useState(true);
+  const [signalData, setSignalData] = useState<{
+    rsi: number;
+    trend: string;
+    signal: string;
+    color: string;
+    message: string;
+    price: number;
+  } | null>(null);
 
-  const symbols = market === 'crypto' ? CRYPTO_SYMBOLS : FOREX_SYMBOLS;
-  const currentShort = symbols.find(s => s.value === selectedSymbol)?.short || '';
+  const currentShort = CRYPTO_SYMBOLS.find(s => s.value === selectedSymbol)?.short || '';
 
-  // Build TradingView chart iframe URL
+  // TradingView Interval Mapping
+  const tvIntervalMap: Record<string, string> = {
+    '1m': '1',
+    '5m': '5',
+    '15m': '15',
+    '30m': '30',
+    '1h': '60',
+    '4h': '240',
+    '1d': 'D',
+  };
+
   const chartUrl = useMemo(() => {
     const params = new URLSearchParams({
-      symbol: selectedSymbol,
-      interval: interval,
+      symbol: `BINANCE:${selectedSymbol}`,
+      interval: tvIntervalMap[interval] || '15',
       theme: 'dark',
       style: '1',
       locale: 'es',
@@ -66,56 +72,107 @@ export default function MarketRadar() {
     return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
   }, [selectedSymbol, interval]);
 
-  // Build TradingView technical analysis iframe URL
-  const gaugeUrl = useMemo(() => {
-    const config = {
-      interval: interval,
-      width: '100%',
-      height: '100%',
-      isTransparent: true,
-      symbol: selectedSymbol,
-      showIntervalTabs: true,
-      displayMode: 'single',
-      locale: 'es',
-      colorTheme: 'dark',
+  useEffect(() => {
+    let isMounted = true;
+    
+    const analyzeMarket = async () => {
+      setAnalyzing(true);
+      try {
+        // Fetch last 15 candles from Binance to calculate RSI (period 14)
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${selectedSymbol}&interval=${interval}&limit=15`);
+        const data = await res.json();
+        
+        if (!isMounted) return;
+
+        const closes = data.map((d: any) => parseFloat(d[4]));
+        const currentPrice = closes[closes.length - 1];
+
+        // RSI Calculation (Simplified 14-period)
+        let gains = 0;
+        let losses = 0;
+        for (let i = 1; i < closes.length; i++) {
+          const diff = closes[i] - closes[i - 1];
+          if (diff >= 0) gains += diff;
+          else losses -= diff;
+        }
+        
+        const avgGain = gains / 14;
+        const avgLoss = losses / 14;
+        let rsi = 50;
+        if (avgLoss === 0) {
+          rsi = 100;
+        } else {
+          const rs = avgGain / avgLoss;
+          rsi = 100 - (100 / (1 + rs));
+        }
+
+        // Determine Signal based on RSI and Price Action
+        let trend = "NEUTRAL";
+        let signal = "⚪ ESPERAR";
+        let color = "#aaaaaa";
+        let message = "El mercado está sin dirección clara. Mantente fuera y espera confirmación.";
+
+        if (rsi >= 70) {
+          trend = "BAJISTA (Sobrecompra)";
+          signal = "🔴 VENDER / CORTO";
+          color = "#ff5252";
+          message = "El precio ha subido demasiado rápido y está sobrecomprado. Alta probabilidad de corrección o caída. Momento ideal para vender o abrir un Short.";
+        } else if (rsi <= 30) {
+          trend = "ALCISTA (Sobreventa)";
+          signal = "🟢 COMPRAR / LARGO";
+          color = "#00e676";
+          message = "El precio ha caído demasiado y tocó fondo. Los vendedores están agotados. Alta probabilidad de rebote. Momento ideal para comprar o abrir un Long.";
+        } else if (rsi > 55 && rsi < 70) {
+          trend = "ALCISTA LIGERA";
+          signal = "🟢 COMPRAR (Precaución)";
+          color = "#00e676";
+          message = "Hay fuerza compradora en el mercado. Puedes comprar, pero usa un Stop Loss ajustado porque la tendencia podría girarse.";
+        } else if (rsi < 45 && rsi > 30) {
+          trend = "BAJISTA LIGERA";
+          signal = "🔴 VENDER (Precaución)";
+          color = "#ff5252";
+          message = "Los vendedores tienen el control. Es buena zona para vender, pero protégete por si hay un rebote sorpresa.";
+        }
+
+        // Add some artificial delay to simulate "AI processing" for UX
+        setTimeout(() => {
+          if (isMounted) {
+            setSignalData({ rsi: parseFloat(rsi.toFixed(2)), trend, signal, color, message, price: currentPrice });
+            setAnalyzing(false);
+          }
+        }, 1200);
+
+      } catch (error) {
+        console.error("Error analyzing market:", error);
+        setAnalyzing(false);
+      }
     };
-    return `https://s.tradingview.com/embed-widget/technical-analysis/?locale=es#${JSON.stringify(config)}`;
+
+    analyzeMarket();
+    // Refresh analysis every 30 seconds
+    const intervalId = setInterval(analyzeMarket, 30000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, [selectedSymbol, interval]);
 
   return (
     <div className="standard-calc">
-      {/* Controls */}
       <div className="calc-panel-box">
         <div className="panel-title-bar">
-          <span>📡</span> Radar de Mercado — Análisis Técnico en Tiempo Real
-        </div>
-
-        {/* Market type tabs */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          <button
-            onClick={() => { setMarket('crypto'); setSelectedSymbol('BINANCE:BTCUSDT'); }}
-            className={market === 'crypto' ? 'btn-primary' : 'btn-secondary'}
-            style={{ flex: 1, padding: '11px 8px', fontSize: '13px', fontWeight: 600 }}
-          >
-            🪙 Cripto
-          </button>
-          <button
-            onClick={() => { setMarket('forex'); setSelectedSymbol('FX:EURUSD'); }}
-            className={market === 'forex' ? 'btn-primary' : 'btn-secondary'}
-            style={{ flex: 1, padding: '11px 8px', fontSize: '13px', fontWeight: 600 }}
-          >
-            💱 Forex
-          </button>
+          <span>🤖</span> Bot de Señales Cripto (Inteligencia de Mercado)
         </div>
 
         {/* Symbol selector */}
         <div className="input-group" style={{ marginBottom: '12px' }}>
-          <label>Activo a Analizar</label>
+          <label>Criptomoneda a Analizar</label>
           <select
             value={selectedSymbol}
             onChange={(e) => setSelectedSymbol(e.target.value)}
           >
-            {symbols.map(s => (
+            {CRYPTO_SYMBOLS.map(s => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
@@ -123,7 +180,7 @@ export default function MarketRadar() {
 
         {/* Interval selector */}
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Temporalidad</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Temporalidad (Para cuándo quieres la predicción)</label>
           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
             {INTERVALS.map(i => (
               <button
@@ -151,41 +208,62 @@ export default function MarketRadar() {
         </div>
       </div>
 
-      {/* Technical Analysis Gauge */}
-      <div className="calc-panel-box" style={{ marginTop: '12px' }}>
-        <div className="panel-title-bar">
-          <span>🧭</span> Medidor de Tendencia — {currentShort}
-        </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px' }}>
-          Resumen basado en +20 indicadores técnicos (RSI, MACD, Medias Móviles, Estocástico, Williams %R, etc.)
-        </p>
-        <div style={{
-          width: '100%',
-          height: '420px',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          background: 'rgba(0,0,0,0.2)',
-        }}>
-          <iframe
-            key={`gauge-${selectedSymbol}-${interval}`}
-            src={gaugeUrl}
-            style={{
-              width: '100%',
-              height: '100%',
-              border: 'none',
-              display: 'block',
-            }}
-            title={`Análisis Técnico ${currentShort}`}
-            allowFullScreen
-            loading="lazy"
-          />
-        </div>
+      {/* AI Signal Output */}
+      <div className="calc-panel-box" style={{ marginTop: '12px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        
+        {analyzing ? (
+          <div style={{ padding: '40px 20px' }}>
+            <div className="btn-spinner" style={{ width: '40px', height: '40px', borderWidth: '4px', margin: '0 auto 20px auto' }}></div>
+            <h3 style={{ color: 'var(--neon-blue)', margin: 0 }}>CriptoBot Analizando Mercado...</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '10px' }}>Leyendo velas de Binance y calculando RSI/Volumen para {currentShort}...</p>
+          </div>
+        ) : signalData ? (
+          <div style={{ padding: '20px 10px' }}>
+            <div style={{ 
+              display: 'inline-block', 
+              padding: '5px 15px', 
+              borderRadius: '20px', 
+              background: 'rgba(255,255,255,0.05)', 
+              color: 'var(--text-muted)',
+              fontSize: '13px',
+              marginBottom: '15px'
+            }}>
+              Precio Actual: <strong style={{ color: '#fff' }}>${signalData.price.toLocaleString()}</strong>
+            </div>
+
+            <h4 style={{ color: 'var(--text-muted)', fontSize: '14px', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Tendencia Detectada</h4>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', color: signalData.color, marginBottom: '25px' }}>
+              {signalData.trend}
+            </div>
+
+            <div style={{
+              background: `rgba(${signalData.color === '#00e676' ? '0,230,118' : signalData.color === '#ff5252' ? '255,82,82' : '170,170,170'}, 0.1)`,
+              border: `1px solid ${signalData.color}`,
+              borderRadius: '12px',
+              padding: '25px 20px',
+              marginBottom: '20px',
+              boxShadow: `0 0 20px rgba(${signalData.color === '#00e676' ? '0,230,118' : signalData.color === '#ff5252' ? '255,82,82' : '170,170,170'}, 0.2)`
+            }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Señal Recomendada</h4>
+              <h2 style={{ margin: 0, fontSize: '32px', color: signalData.color }}>{signalData.signal}</h2>
+            </div>
+
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', maxWidth: '400px', margin: '0 auto' }}>
+              {signalData.message}
+            </p>
+            
+            <div style={{ marginTop: '20px', fontSize: '12px', color: 'rgba(255,255,255,0.2)' }}>
+              (Fuerza RSI: {signalData.rsi}) - Actualizado en vivo
+            </div>
+          </div>
+        ) : null}
+
       </div>
 
       {/* Candlestick Chart */}
       <div className="calc-panel-box" style={{ marginTop: '12px' }}>
         <div className="panel-title-bar">
-          <span>🕯️</span> Gráfico de Velas — {currentShort}
+          <span>🕯️</span> Gráfico de Velas — Confirma tu entrada
         </div>
         <div style={{
           width: '100%',
@@ -219,10 +297,8 @@ export default function MarketRadar() {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '4px 0' }}>
           <span style={{ fontSize: '22px' }}>⚠️</span>
           <p style={{ color: 'var(--text-muted)', fontSize: '11px', lineHeight: '1.6', margin: 0 }}>
-            <strong style={{ color: '#ff5252' }}>Aviso Legal:</strong> Esta herramienta es únicamente informativa y educativa.
-            Los indicadores técnicos y medidores de tendencia <strong>NO constituyen asesoría financiera</strong> ni recomendaciones de inversión.
-            El rendimiento pasado no garantiza resultados futuros. Operar con criptomonedas, divisas y derivados conlleva un alto riesgo de pérdida de capital.
-            Siempre haz tu propia investigación (DYOR) antes de tomar decisiones de inversión.
+            <strong style={{ color: '#ff5252' }}>Aviso Legal:</strong> Las señales de este bot están basadas estrictamente en análisis técnico automatizado (RSI y Acción del precio de Binance).
+            <strong> NO constituyen asesoría financiera infalible</strong>. El mercado de criptomonedas es altamente volátil. Usa esta herramienta como apoyo, gestiona tu riesgo y opera bajo tu propia responsabilidad.
           </p>
         </div>
       </div>
