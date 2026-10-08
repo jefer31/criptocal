@@ -16,17 +16,28 @@ const CRYPTO_SYMBOLS = [
   { value: 'MATICUSDT', label: '⬟ Polygon (MATIC/USDT)', short: 'MATIC' },
 ];
 
+const FOREX_SYMBOLS = [
+  { value: 'EUR_USD', label: '🇪🇺 EUR/USD', short: 'EUR/USD' },
+  { value: 'GBP_USD', label: '🇬🇧 GBP/USD', short: 'GBP/USD' },
+  { value: 'USD_JPY', label: '🇯🇵 USD/JPY', short: 'USD/JPY' },
+  { value: 'USD_CHF', label: '🇨🇭 USD/CHF', short: 'USD/CHF' },
+  { value: 'AUD_USD', label: '🇦🇺 AUD/USD', short: 'AUD/USD' },
+  { value: 'USD_CAD', label: '🇨🇦 USD/CAD', short: 'USD/CAD' },
+  { value: 'NZD_USD', label: '🇳🇿 NZD/USD', short: 'NZD/USD' },
+  { value: 'EUR_GBP', label: '🇪🇺🇬🇧 EUR/GBP', short: 'EUR/GBP' },
+];
+
 const INTERVALS = [
   { value: '1m', label: '1 min' },
   { value: '5m', label: '5 min' },
   { value: '15m', label: '15 min' },
   { value: '30m', label: '30 min' },
   { value: '1h', label: '1 hora' },
-  { value: '4h', label: '4 horas' },
   { value: '1d', label: '1 día' },
 ];
 
 export default function MarketRadar() {
+  const [market, setMarket] = useState<'crypto' | 'forex'>('crypto');
   const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
   const [interval, setInterval] = useState('15m');
   const [analyzing, setAnalyzing] = useState(true);
@@ -39,7 +50,8 @@ export default function MarketRadar() {
     price: number;
   } | null>(null);
 
-  const currentShort = CRYPTO_SYMBOLS.find(s => s.value === selectedSymbol)?.short || '';
+  const symbols = market === 'crypto' ? CRYPTO_SYMBOLS : FOREX_SYMBOLS;
+  const currentShort = symbols.find(s => s.value === selectedSymbol)?.short || '';
 
   // TradingView Interval Mapping
   const tvIntervalMap: Record<string, string> = {
@@ -48,13 +60,25 @@ export default function MarketRadar() {
     '15m': '15',
     '30m': '30',
     '1h': '60',
-    '4h': '240',
+    '1d': 'D',
+  };
+
+  // Finnhub Interval Mapping
+  const finnhubIntervalMap: Record<string, string> = {
+    '1m': '1',
+    '5m': '5',
+    '15m': '15',
+    '30m': '30',
+    '1h': '60',
     '1d': 'D',
   };
 
   const chartUrl = useMemo(() => {
+    // For TradingView, crypto is BINANCE:BTCUSDT, forex is FX:EURUSD
+    let tvSymbol = market === 'crypto' ? `BINANCE:${selectedSymbol}` : `FX:${selectedSymbol.replace('_', '')}`;
+    
     const params = new URLSearchParams({
-      symbol: `BINANCE:${selectedSymbol}`,
+      symbol: tvSymbol,
       interval: tvIntervalMap[interval] || '15',
       theme: 'dark',
       style: '1',
@@ -70,7 +94,7 @@ export default function MarketRadar() {
       backgroundColor: 'rgba(10, 10, 26, 1)',
     });
     return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
-  }, [selectedSymbol, interval]);
+  }, [market, selectedSymbol, interval]);
 
   useEffect(() => {
     let isMounted = true;
@@ -78,14 +102,28 @@ export default function MarketRadar() {
     const analyzeMarket = async () => {
       setAnalyzing(true);
       try {
-        // Fetch last 15 candles from Binance to calculate RSI (period 14)
-        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${selectedSymbol}&interval=${interval}&limit=15`);
-        const data = await res.json();
-        
-        if (!isMounted) return;
+        let closes: number[] = [];
+        let currentPrice = 0;
 
-        const closes = data.map((d: any) => parseFloat(d[4]));
-        const currentPrice = closes[closes.length - 1];
+        if (market === 'crypto') {
+          // Fetch from Binance
+          const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${selectedSymbol}&interval=${interval}&limit=15`);
+          const data = await res.json();
+          if (!isMounted) return;
+          closes = data.map((d: any) => parseFloat(d[4]));
+          currentPrice = closes[closes.length - 1];
+        } else {
+          // Fetch from our custom Finnhub proxy for Forex
+          const finnRes = finnhubIntervalMap[interval];
+          const res = await fetch(`/api/forex?symbol=${selectedSymbol}&resolution=${finnRes}`);
+          const data = await res.json();
+          if (!isMounted) return;
+          if (data.error) throw new Error(data.error);
+          closes = data.closes;
+          currentPrice = data.currentPrice;
+        }
+
+        if (closes.length < 14) throw new Error("Not enough data");
 
         // RSI Calculation (Simplified 14-period)
         let gains = 0;
@@ -156,23 +194,41 @@ export default function MarketRadar() {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [selectedSymbol, interval]);
+  }, [market, selectedSymbol, interval]);
 
   return (
     <div className="standard-calc">
       <div className="calc-panel-box">
         <div className="panel-title-bar">
-          <span>🤖</span> Bot de Señales Cripto (Inteligencia de Mercado)
+          <span>🤖</span> Bot de Señales (Inteligencia de Mercado)
+        </div>
+
+        {/* Market type tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+          <button
+            onClick={() => { setMarket('crypto'); setSelectedSymbol('BTCUSDT'); }}
+            className={market === 'crypto' ? 'btn-primary' : 'btn-secondary'}
+            style={{ flex: 1, padding: '11px 8px', fontSize: '13px', fontWeight: 600 }}
+          >
+            🪙 Cripto (Binance)
+          </button>
+          <button
+            onClick={() => { setMarket('forex'); setSelectedSymbol('EUR_USD'); }}
+            className={market === 'forex' ? 'btn-primary' : 'btn-secondary'}
+            style={{ flex: 1, padding: '11px 8px', fontSize: '13px', fontWeight: 600 }}
+          >
+            💱 Forex (OANDA/WallSt)
+          </button>
         </div>
 
         {/* Symbol selector */}
         <div className="input-group" style={{ marginBottom: '12px' }}>
-          <label>Criptomoneda a Analizar</label>
+          <label>Activo a Analizar</label>
           <select
             value={selectedSymbol}
             onChange={(e) => setSelectedSymbol(e.target.value)}
           >
-            {CRYPTO_SYMBOLS.map(s => (
+            {symbols.map(s => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
@@ -214,8 +270,10 @@ export default function MarketRadar() {
         {analyzing ? (
           <div style={{ padding: '40px 20px' }}>
             <div className="btn-spinner" style={{ width: '40px', height: '40px', borderWidth: '4px', margin: '0 auto 20px auto' }}></div>
-            <h3 style={{ color: 'var(--neon-blue)', margin: 0 }}>CriptoBot Analizando Mercado...</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '10px' }}>Leyendo velas de Binance y calculando RSI/Volumen para {currentShort}...</p>
+            <h3 style={{ color: 'var(--neon-blue)', margin: 0 }}>TradingBot Analizando Mercado...</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '10px' }}>
+              Leyendo velas en vivo de {market === 'crypto' ? 'Binance' : 'Wall Street'} y calculando fuerza para {currentShort}...
+            </p>
           </div>
         ) : signalData ? (
           <div style={{ padding: '20px 10px' }}>
@@ -228,7 +286,7 @@ export default function MarketRadar() {
               fontSize: '13px',
               marginBottom: '15px'
             }}>
-              Precio Actual: <strong style={{ color: '#fff' }}>${signalData.price.toLocaleString()}</strong>
+              Precio Actual: <strong style={{ color: '#fff' }}>{market === 'crypto' ? '$' : ''}{signalData.price.toLocaleString(undefined, { minimumFractionDigits: market === 'forex' ? 4 : 2 })}</strong>
             </div>
 
             <h4 style={{ color: 'var(--text-muted)', fontSize: '14px', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Tendencia Detectada</h4>
@@ -297,8 +355,8 @@ export default function MarketRadar() {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '4px 0' }}>
           <span style={{ fontSize: '22px' }}>⚠️</span>
           <p style={{ color: 'var(--text-muted)', fontSize: '11px', lineHeight: '1.6', margin: 0 }}>
-            <strong style={{ color: '#ff5252' }}>Aviso Legal:</strong> Las señales de este bot están basadas estrictamente en análisis técnico automatizado (RSI y Acción del precio de Binance).
-            <strong> NO constituyen asesoría financiera infalible</strong>. El mercado de criptomonedas es altamente volátil. Usa esta herramienta como apoyo, gestiona tu riesgo y opera bajo tu propia responsabilidad.
+            <strong style={{ color: '#ff5252' }}>Aviso Legal:</strong> Las señales de este bot están basadas estrictamente en análisis técnico automatizado (RSI y Acción del precio).
+            <strong> NO constituyen asesoría financiera infalible</strong>. El mercado es altamente volátil. Usa esta herramienta como apoyo, gestiona tu riesgo y opera bajo tu propia responsabilidad.
           </p>
         </div>
       </div>
